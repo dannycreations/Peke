@@ -1,0 +1,8 @@
+packages:
+  - packages/*
+  - '!**/test/**'
+  - '!**/scripts/**'
+
+onlyBuiltDependencies:
+  - '@tailwindcss/oxide'
+  - esbuild

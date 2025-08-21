@@ -1,0 +1,5 @@
+{
+  "name": "Google AI Studio Plus",
+  "icon": "https://www.google.com/s2/favicons?sz=64&domain=aistudio.google.com",
+  "match": ["*://aistudio.google.com/apps/drive/*"]
+}

@@ -1,5 +1,5 @@
 {
-  "name": "Google AI Studio Plus",
+  "name": "AI Studio Tweak",
   "icon": "https://www.google.com/s2/favicons?sz=64&domain=aistudio.google.com",
   "match": ["*://aistudio.google.com/apps/drive/*"]
 }

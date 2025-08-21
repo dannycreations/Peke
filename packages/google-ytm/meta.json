@@ -1,0 +1,5 @@
+{
+  "name": "Youtube Music Tweak",
+  "icon": "https://www.google.com/s2/favicons?sz=64&domain=music.youtube.com",
+  "match": ["*://music.youtube.com/*"]
+}

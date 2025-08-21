@@ -29,12 +29,14 @@ async function getFiles(dir: string, extensions: string[], rootDir = dir, files:
 
 interface Meta {
   name: string;
-  description: string;
-  icon: string;
   match: string[];
+  description?: string;
+  icon?: string;
+  grant?: string[];
 }
 
-const META_TEMPLATE = `
+const META_ICON = 'https://www.google.com/s2/favicons?sz=64&domain=violentmonkey.github.io';
+const META_BLOCK = `
 // ==UserScript==
 // @name         {{name}}
 // @description  {{description}}
@@ -42,16 +44,19 @@ const META_TEMPLATE = `
 // @author       {{author}}
 // @version      {{version}}
 // @namespace    ${homepage}
+// @homepage     ${homepage}
 // @match        {{match}}
-// @grant        none
+// @grant        {{grant}}
 // @run-at       document-start
 // ==/UserScript==
 
 {{source}}
 `;
+
 const INPUT_DIR = posix.resolve('packages');
 const OUTPUT_DIR = posix.resolve('dist');
 const TARGET_FILES = ['src/index.ts'];
+
 const META_FILE = (path: string) => posix.resolve(path, 'meta.json');
 const PACKAGE_FILE = (path: string) => posix.resolve(path, 'package.json');
 
@@ -72,12 +77,13 @@ async function main(): Promise<void> {
     const dist = posix.resolve(repo, 'dist', 'index.js');
     const source = await readFile(dist, 'utf8');
 
-    const userScript = META_TEMPLATE.replace('{{name}}', meta.name)
+    const userScript = META_BLOCK.replace('{{name}}', meta.name)
       .replace('{{description}}', meta.description ?? '-')
-      .replace('{{icon}}', meta.icon ?? 'https://www.google.com/s2/favicons?sz=64&domain=violentmonkey.github.io')
+      .replace('{{icon}}', meta.icon ?? META_ICON)
       .replace('{{author}}', pkg.author ?? 'Peke')
       .replace('{{version}}', pkg.version ?? '0.0.0')
       .replace('{{match}}', meta.match.join('\n// @match        '))
+      .replace('{{grant}}', meta.grant?.join('\n// @grant        ') ?? 'none')
       .replace('{{source}}', source);
 
     const finalFile = `${snakeCase(pkg.name)}.user.js`;

@@ -73,12 +73,10 @@ function main(): void {
     manageTabs();
   });
 
-  const observerConfig: MutationObserverInit = {
-    subtree: true,
+  observer.observe(document.body, {
     childList: true,
-  };
-
-  observer.observe(document.body, observerConfig);
+    subtree: true,
+  });
 }
 
 setAutorun('complete', main);

@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "npx http-server dist -c5 -s",
     "build": "turbo run build",
+    "test": "turbo run test",
     "format": "prettier --write .",
     "update": "npm-check-updates -u -x @types/node",
     "prepack": "tsx scripts/compile.build.ts",

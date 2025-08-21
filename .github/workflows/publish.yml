@@ -1,0 +1,43 @@
+name: publish
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: publish
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+
+      - name: Install and build
+        run: |
+          npm install -g pnpm tsx
+          pnpm install
+          tsx scripts/compile.build.ts
+
+      - name: Prepare deployment directory
+        run: |
+          mkdir -p public
+          cp -R dist/* public
+
+      - name: Deploy to dist branch
+        uses: crazy-max/ghaction-github-pages@v4
+        with:
+          build_dir: public
+          target_branch: dist
+          commit_message: 'Deploy to dist branch'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

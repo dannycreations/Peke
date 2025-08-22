@@ -6,7 +6,7 @@
     "moduleDetection": "force",
     "isolatedModules": true,
 
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "lib": ["esnext", "DOM", "DOM.Iterable"],
     "types": ["vite/client"],
 
     "outDir": "dist",

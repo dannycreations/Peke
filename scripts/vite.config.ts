@@ -10,8 +10,6 @@ import { name } from '../package.json';
 
 import type { UserConfig } from 'vite';
 
-const isDevelopment = process.env.NODE_ENV === 'development';
-
 const baseOptions = {
   plugins: [
     tsconfigPaths(),
@@ -26,7 +24,7 @@ const baseOptions = {
     lib: {
       entry: 'src/index.ts',
       name: pascalCase(name),
-      formats: ['iife', 'es'],
+      formats: ['iife'],
     },
     rollupOptions: {
       output: {
@@ -34,24 +32,22 @@ const baseOptions = {
         inlineDynamicImports: true,
       },
     },
-    minify: !isDevelopment ? 'terser' : false,
-    terserOptions: !isDevelopment
-      ? {
-          compress: {
-            drop_console: true,
-            drop_debugger: true,
-            dead_code: true,
-            unused: true,
-          },
-          format: {
-            beautify: false,
-            comments: false,
-          },
-        }
-      : undefined,
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+        dead_code: true,
+        unused: true,
+      },
+      format: {
+        beautify: false,
+        comments: false,
+      },
+    },
   },
   define: {
-    'process.env.NODE_ENV': JSON.stringify(isDevelopment ? 'development' : 'production'),
+    'process.env.NODE_ENV': JSON.stringify('production'),
   },
   test: {
     name,

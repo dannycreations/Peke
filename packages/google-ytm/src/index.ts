@@ -1,4 +1,5 @@
 import { setAutorun } from '@/helpers/autorun';
+import { debounce } from 'es-toolkit';
 
 interface PlaylistState {
   readonly length: number;
@@ -13,7 +14,7 @@ interface SongData {
 let lastSortedLength: number = 0;
 let lastFirstElement: string | null = null;
 
-const parsePlayCount = (playString: string | null): number => {
+function parsePlayCount(playString: string | null): number {
   if (!playString) {
     return 0;
   }
@@ -35,9 +36,9 @@ const parsePlayCount = (playString: string | null): number => {
   }
 
   return num * multiplier;
-};
+}
 
-const getPlaylistState = (container: Element): PlaylistState => {
+function getPlaylistState(container: Element): PlaylistState {
   const items = container.querySelectorAll<Element>('ytmusic-responsive-list-item-renderer');
   const length = items.length;
   let firstElement: string | null = null;
@@ -52,9 +53,9 @@ const getPlaylistState = (container: Element): PlaylistState => {
   }
 
   return { length, firstElement };
-};
+}
 
-const sortPlaylistByPlays = (): void => {
+function sortPlaylist(): void {
   const container = document.querySelector('ytmusic-playlist-shelf-renderer #contents');
   if (!container) {
     return;
@@ -99,10 +100,12 @@ const sortPlaylistByPlays = (): void => {
   const currentState = getPlaylistState(container);
   lastSortedLength = currentState.length;
   lastFirstElement = currentState.firstElement;
-};
+}
 
 function main(): void {
-  sortPlaylistByPlays();
+  sortPlaylist();
+
+  const debouncedSortPlaylist = debounce(sortPlaylist, 100);
 
   const observer = new MutationObserver(() => {
     const playlistContainer = document.querySelector('ytmusic-playlist-shelf-renderer #contents');
@@ -115,7 +118,7 @@ function main(): void {
 
       if (hasLengthChanged || hasFirstElementChanged) {
         console.log('Playlist changed, re-sorting...');
-        sortPlaylistByPlays();
+        debouncedSortPlaylist();
       }
     }
   });

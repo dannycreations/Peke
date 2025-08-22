@@ -1,16 +1,17 @@
 import { execSync } from 'node:child_process';
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { posix } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { snakeCase } from 'es-toolkit';
 
 import { homepage } from '../package.json';
 
-interface TsFile {
+interface FilePath {
   readonly full: string;
   readonly relative: string;
 }
 
-async function getFiles(dir: string, extensions: string[], rootDir = dir, files: TsFile[] = []): Promise<TsFile[]> {
+async function getFiles(dir: string, extensions: string[], rootDir = dir, files: FilePath[] = []): Promise<FilePath[]> {
   const entries = await readdir(dir, { withFileTypes: true });
   for (const entry of entries) {
     const fullPath = posix.resolve(dir, entry.name);
@@ -27,12 +28,12 @@ async function getFiles(dir: string, extensions: string[], rootDir = dir, files:
   return files;
 }
 
-interface Meta {
-  name: string;
-  match: string[];
-  description?: string;
-  icon?: string;
-  grant?: string[];
+interface MetaBlock {
+  readonly name: string;
+  readonly match: string[];
+  readonly description?: string;
+  readonly icon?: string;
+  readonly grant?: string[];
 }
 
 const META_ICON = 'https://www.google.com/s2/favicons?sz=64&domain=violentmonkey.github.io';
@@ -60,31 +61,53 @@ const TARGET_FILES = ['src/index.ts'];
 const META_FILE = (path: string) => posix.resolve(path, 'meta.json');
 const PACKAGE_FILE = (path: string) => posix.resolve(path, 'package.json');
 
-async function main(): Promise<void> {
+export async function main(packageName?: string): Promise<void> {
   await rm(OUTPUT_DIR, { recursive: true, force: true });
   await mkdir(OUTPUT_DIR, { recursive: true });
 
-  execSync('pnpm run build', { stdio: 'inherit' });
+  const buildCommand = packageName ? `pnpm run build --filter=${packageName}` : 'pnpm run build';
+  execSync(buildCommand, { stdio: 'inherit' });
 
-  const files = await getFiles(INPUT_DIR, TARGET_FILES);
+  const targetFileRegex = new RegExp(TARGET_FILES.join('|'), 'g');
+  let files = await getFiles(INPUT_DIR, TARGET_FILES);
+  if (packageName) {
+    files = files.filter((file) => file.full.includes(packageName));
+  }
+
   for (const file of files) {
-    const regex = new RegExp(TARGET_FILES.join('|'), 'gi');
-    const repo = file.full.replace(regex, '');
+    const repo = file.full.replace(targetFileRegex, '');
 
-    const meta: Meta = JSON.parse(await readFile(META_FILE(repo), 'utf8'));
-    const pkg = JSON.parse(await readFile(PACKAGE_FILE(repo), 'utf8'));
+    const [metaContent, pkgContent, source] = await Promise.all([
+      readFile(META_FILE(repo), 'utf8'),
+      readFile(PACKAGE_FILE(repo), 'utf8'),
+      readFile(posix.resolve(repo, 'dist', 'index.js'), 'utf8'),
+    ]);
 
-    const dist = posix.resolve(repo, 'dist', 'index.js');
-    const source = await readFile(dist, 'utf8');
+    const meta: MetaBlock = JSON.parse(metaContent);
+    const pkg = JSON.parse(pkgContent);
 
-    const userScript = META_BLOCK.replace('{{name}}', meta.name)
-      .replace('{{description}}', meta.description ?? '-')
-      .replace('{{icon}}', meta.icon ?? META_ICON)
-      .replace('{{author}}', pkg.author ?? 'Peke')
-      .replace('{{version}}', pkg.version ?? '0.0.0')
-      .replace('{{match}}', meta.match.join('\n// @match        '))
-      .replace('{{grant}}', meta.grant?.join('\n// @grant        ') ?? 'none')
-      .replace('{{source}}', source);
+    const userScript = META_BLOCK.replace(/\{\{(.*?)\}\}/g, (match, key) => {
+      switch (key) {
+        case 'name':
+          return meta.name;
+        case 'description':
+          return meta.description ?? '-';
+        case 'icon':
+          return meta.icon ?? META_ICON;
+        case 'author':
+          return pkg.author ?? 'Peke';
+        case 'version':
+          return pkg.version ?? '0.0.0';
+        case 'match':
+          return meta.match.join('\n// @match        ');
+        case 'grant':
+          return meta.grant?.join('\n// @grant        ') ?? 'none';
+        case 'source':
+          return source;
+        default:
+          return match;
+      }
+    });
 
     const finalFile = `${snakeCase(pkg.name)}.user.js`;
     const outFile = posix.resolve(OUTPUT_DIR, finalFile);
@@ -95,4 +118,9 @@ async function main(): Promise<void> {
   console.log('All builds successfully.');
 }
 
-main().catch(console.trace);
+const currentFile = posix.resolve(fileURLToPath(import.meta.url));
+const entryFile = posix.resolve(process.argv[1]);
+
+if (currentFile === entryFile) {
+  main().catch(console.trace);
+}

@@ -6,7 +6,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "npx http-server dist -c5 -s",
+    "dev": "tsx scripts/dev.build.ts",
     "build": "turbo run build",
     "test": "turbo run test",
     "format": "prettier --write .",
@@ -34,6 +34,7 @@
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",
     "@vitejs/plugin-react": "^5.0.0",
+    "chokidar": "^4.0.3",
     "husky": "^9.1.7",
     "npm-check-updates": "^18.0.2",
     "prettier": "^3.6.2",

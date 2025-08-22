@@ -1,4 +1,5 @@
 import { setAutorun } from '@/helpers/autorun';
+import { debounce } from 'es-toolkit';
 
 function createCtrlRearranger(): () => void {
   const SLIDE_TOGGLE = 'mat-slide-toggle';
@@ -68,9 +69,12 @@ function main(): void {
   const rearrangeCtrls = createCtrlRearranger();
   const manageTabs = createTabManager();
 
+  const debouncedRearrangeCtrls = debounce(rearrangeCtrls, 100);
+  const debouncedManageTabs = debounce(manageTabs, 100);
+
   const observer = new MutationObserver(() => {
-    rearrangeCtrls();
-    manageTabs();
+    debouncedRearrangeCtrls();
+    debouncedManageTabs();
   });
 
   observer.observe(document.body, {

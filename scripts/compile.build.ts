@@ -11,15 +11,14 @@ interface FilePath {
   readonly relative: string;
 }
 
-async function getFiles(dir: string, extensions: string[], rootDir = dir, files: FilePath[] = []): Promise<FilePath[]> {
+async function getFiles(dir: string, regex: RegExp, rootDir = dir, files: FilePath[] = []): Promise<FilePath[]> {
   const entries = await readdir(dir, { withFileTypes: true });
   for (const entry of entries) {
     const fullPath = posix.resolve(dir, entry.name);
     if (entry.isDirectory()) {
-      await getFiles(fullPath, extensions, rootDir, files);
+      await getFiles(fullPath, regex, rootDir, files);
     } else if (entry.isFile()) {
-      const matchedExt = extensions.find((ext) => fullPath.endsWith(ext));
-      if (matchedExt) {
+      if (regex.test(fullPath)) {
         const relativePath = posix.relative(rootDir, fullPath);
         files.push({ full: fullPath, relative: relativePath });
       }
@@ -56,7 +55,7 @@ const META_BLOCK = `
 
 const INPUT_DIR = posix.resolve('packages');
 const OUTPUT_DIR = posix.resolve('dist');
-const TARGET_FILES = ['src/index.ts'];
+const TARGET_FILES = /src\/index\.(ts|tsx)/;
 
 const META_FILE = (path: string) => posix.resolve(path, 'meta.json');
 const PACKAGE_FILE = (path: string) => posix.resolve(path, 'package.json');
@@ -71,14 +70,13 @@ export async function main(packageName?: string): Promise<void> {
 
   execSync(command, { stdio: 'inherit' });
 
-  const targetFileRegex = new RegExp(TARGET_FILES.join('|'), 'g');
   let files = await getFiles(INPUT_DIR, TARGET_FILES);
   if (packageName) {
     files = files.filter((file) => file.full.includes(packageName));
   }
 
   for (const file of files) {
-    const repo = file.full.replace(targetFileRegex, '');
+    const repo = posix.resolve(file.full, '..', '..');
 
     const [metaContent, pkgContent, source] = await Promise.all([
       readFile(META_FILE(repo), 'utf8'),

@@ -1,0 +1,59 @@
+import type { Config } from './types';
+
+export const ActionType = {
+  CLICK: 'CLICK',
+  DELETE: 'DELETE',
+} as const;
+
+export const DEFAULT_CONFIG: Config = {
+  cycleDelay: 1000,
+  isPanelVisible: true,
+  position: {
+    left: 10,
+    right: null,
+    top: 10,
+  },
+  selectors: [],
+  stepDelay: 150,
+  waitDelay: 5000,
+};
+
+export const HIGHLIGHT_BG_COLORS = {
+  idle: '',
+  success: '#22c55e',
+  waiting: '#facc15',
+} as const;
+
+export const HIGHLIGHT_TEXT_COLORS = {
+  idle: '',
+  success: 'white',
+  waiting: 'black',
+} as const;
+
+export const HighlightState = {
+  IDLE: 'idle',
+  SUCCESS: 'success',
+  WAITING: 'waiting',
+} as const;
+
+export const StatusState = {
+  IDLE: 'idle',
+  RUNNING: 'running',
+  STOPPED: 'stopped',
+} as const;
+
+export const STATUS_COLORS = {
+  idle: '#6b7280',
+  running: '#22c55e',
+  stopped: '#ef4444',
+} as const;
+
+export const STATUS_TEXTS = {
+  idle: 'Idle',
+  running: 'Running',
+  stopped: 'Stopped',
+} as const;
+
+export const STORAGE_CONFIG_KEY = 'sat_config';
+
+export const STORAGE_RUNNER_KEY = 'sat_runner';

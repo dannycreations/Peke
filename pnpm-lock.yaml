@@ -11,18 +11,6 @@ importers:
       es-toolkit:
         specifier: ^1.39.10
         version: 1.39.10
-      react:
-        specifier: 19.1.1
-        version: 19.1.1
-      react-dom:
-        specifier: 19.1.1
-        version: 19.1.1(react@19.1.1)
-      valibot:
-        specifier: 1.1.0
-        version: 1.1.0(typescript@5.9.2)
-      zustand:
-        specifier: 5.0.7
-        version: 5.0.7(@types/react@19.1.10)(react@19.1.1)
     devDependencies:
       '@changesets/cli':
         specifier: ^2.29.6
@@ -30,21 +18,9 @@ importers:
       '@ianvs/prettier-plugin-sort-imports':
         specifier: ^4.6.2
         version: 4.6.2(prettier@3.6.2)
-      '@tailwindcss/vite':
-        specifier: ^4.1.12
-        version: 4.1.12(vite@7.1.3(@types/node@22.17.2)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.43.1))
       '@types/node':
         specifier: 22.17.2
         version: 22.17.2
-      '@types/react':
-        specifier: ^19.1.10
-        version: 19.1.10
-      '@types/react-dom':
-        specifier: ^19.1.7
-        version: 19.1.7(@types/react@19.1.10)
-      '@vitejs/plugin-react':
-        specifier: ^5.0.0
-        version: 5.0.1(vite@7.1.3(@types/node@22.17.2)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.43.1))
       chokidar:
         specifier: ^4.0.3
         version: 4.0.3
@@ -57,9 +33,6 @@ importers:
       prettier:
         specifier: ^3.6.2
         version: 3.6.2
-      tailwindcss:
-        specifier: ^4.1.12
-        version: 4.1.12
       terser:
         specifier: ^5.43.1
         version: 5.43.1
@@ -70,7 +43,7 @@ importers:
         specifier: ^5.9.2
         version: 5.9.2
       vite:
-        specifier: ^7.1.2
+        specifier: ^7.1.3
         version: 7.1.3(@types/node@22.17.2)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.43.1)
       vite-plugin-checker:
         specifier: ^0.10.2
@@ -85,6 +58,43 @@ importers:
   packages/google-aistudio: {}
 
   packages/google-ytm: {}
+
+  packages/simple-auto-task:
+    dependencies:
+      jquery:
+        specifier: ^3.7.1
+        version: 3.7.1
+      react:
+        specifier: ^19.1.1
+        version: 19.1.1
+      react-dom:
+        specifier: ^19.1.1
+        version: 19.1.1(react@19.1.1)
+      valibot:
+        specifier: 1.1.0
+        version: 1.1.0(typescript@5.9.2)
+      zustand:
+        specifier: 5.0.8
+        version: 5.0.8(@types/react@19.1.10)(react@19.1.1)
+    devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.12
+        version: 4.1.12(vite@7.1.3(@types/node@22.17.2)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.43.1))
+      '@types/jquery':
+        specifier: ^3.5.33
+        version: 3.5.33
+      '@types/react':
+        specifier: ^19.1.10
+        version: 19.1.10
+      '@types/react-dom':
+        specifier: ^19.1.7
+        version: 19.1.7(@types/react@19.1.10)
+      '@vitejs/plugin-react':
+        specifier: ^5.0.1
+        version: 5.0.1(vite@7.1.3(@types/node@22.17.2)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.43.1))
+      tailwindcss:
+        specifier: ^4.1.12
+        version: 4.1.12
 
 packages:
 
@@ -672,6 +682,9 @@ packages:
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
 
+  '@types/jquery@3.5.33':
+    resolution: {integrity: sha512-SeyVJXlCZpEki5F0ghuYe+L+PprQta6nRZqhONt9F13dWBtR/ftoaIbdRQ7cis7womE+X2LKhsDdDtkkDhJS6g==}
+
   '@types/node@12.20.55':
     resolution: {integrity: sha512-J8xLz7q2OFulZ2cyGTLE1TbbZcjpno7FaN6zdJNrgAdrJ+DZzh/uFR6YrTb4C+nXakvud8Q4+rbhoIWlYQbUFQ==}
 
@@ -685,6 +698,9 @@ packages:
 
   '@types/react@19.1.10':
     resolution: {integrity: sha512-EhBeSYX0Y6ye8pNebpKrwFJq7BoQ8J5SO6NlvNwwHjSj6adXJViPQrKlsyPw7hLBLvckEMO1yxeGdR82YBBlDg==}
+
+  '@types/sizzle@2.3.9':
+    resolution: {integrity: sha512-xzLEyKB50yqCUPUJkIsrVvoWNfFUbIZI+RspLWt8u+tIW/BetMBZtgV2LY/2o+tYH8dRvQ+eoPf3NdhQCcLE2w==}
 
   '@vitejs/plugin-react@5.0.1':
     resolution: {integrity: sha512-DE4UNaBXwtVoDJ0ccBdLVjFTWL70NRuWNCxEieTI3lrq9ORB9aOCQEKstwDXBl87NvFdbqh/p7eINGyj0BthJA==}
@@ -972,6 +988,9 @@ packages:
   jiti@2.5.1:
     resolution: {integrity: sha512-twQoecYPiVA5K/h6SxtORw/Bs3ar+mLUtoPSc7iMXzQzK8d7eJ/R09wmTwAjiamETn1cXYPGfNnu7DMoHgu12w==}
     hasBin: true
+
+  jquery@3.7.1:
+    resolution: {integrity: sha512-m4avr8yL8kmFN8psrbFFFmB/If14iN5o9nw/NgnnM+kybDJpRsAynV2BsfpTYrTRysYUdADVD7CkUUizgkpLfg==}
 
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
@@ -1572,8 +1591,8 @@ packages:
     resolution: {integrity: sha512-YgvUTfwqyc7UXVMrB+SImsVYSmTS8X/tSrtdNZMImM+n7+QTriRXyXim0mBrTXNeqzVF0KWGgHPeiyViFFrNDw==}
     engines: {node: '>=18'}
 
-  zustand@5.0.7:
-    resolution: {integrity: sha512-Ot6uqHDW/O2VdYsKLLU8GQu8sCOM1LcoE8RwvLv9uuRT9s6SOHCKs0ZEOhxg+I1Ld+A1Q5lwx+UlKXXUoCZITg==}
+  zustand@5.0.8:
+    resolution: {integrity: sha512-gyPKpIaxY9XcO2vSMrLbiER7QMAMGOQZVRdJ6Zi782jkbzZygq5GI9nG8g+sMgitRtndwaBSl7uiqC49o1SSiw==}
     engines: {node: '>=12.20.0'}
     peerDependencies:
       '@types/react': '>=18.0.0'
@@ -2169,6 +2188,10 @@ snapshots:
 
   '@types/estree@1.0.8': {}
 
+  '@types/jquery@3.5.33':
+    dependencies:
+      '@types/sizzle': 2.3.9
+
   '@types/node@12.20.55': {}
 
   '@types/node@22.17.2':
@@ -2182,6 +2205,8 @@ snapshots:
   '@types/react@19.1.10':
     dependencies:
       csstype: 3.1.3
+
+  '@types/sizzle@2.3.9': {}
 
   '@vitejs/plugin-react@5.0.1(vite@7.1.3(@types/node@22.17.2)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.43.1))':
     dependencies:
@@ -2463,6 +2488,8 @@ snapshots:
   isexe@2.0.0: {}
 
   jiti@2.5.1: {}
+
+  jquery@3.7.1: {}
 
   js-tokens@4.0.0: {}
 
@@ -2944,7 +2971,7 @@ snapshots:
 
   yallist@5.0.0: {}
 
-  zustand@5.0.7(@types/react@19.1.10)(react@19.1.1):
+  zustand@5.0.8(@types/react@19.1.10)(react@19.1.1):
     optionalDependencies:
       '@types/react': 19.1.10
       react: 19.1.1

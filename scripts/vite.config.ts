@@ -1,5 +1,3 @@
-import tailwindcss from '@tailwindcss/vite';
-import react from '@vitejs/plugin-react';
 import { pascalCase } from 'es-toolkit';
 import { defineConfig, mergeConfig } from 'vite';
 import checker from 'vite-plugin-checker';
@@ -13,8 +11,6 @@ import type { UserConfig } from 'vite';
 const baseOptions = {
   plugins: [
     tsconfigPaths(),
-    tailwindcss(),
-    react(),
     checker({
       typescript: true,
       enableBuild: true,

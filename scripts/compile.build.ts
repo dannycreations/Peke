@@ -1,5 +1,5 @@
 import { execSync } from 'node:child_process';
-import { readdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { snakeCase } from 'es-toolkit';
@@ -62,6 +62,8 @@ const META_FILE = (path: string) => posix.resolve(path, 'meta.json');
 const PACKAGE_FILE = (path: string) => posix.resolve(path, 'package.json');
 
 export async function main(packageName?: string): Promise<void> {
+  await mkdir(OUTPUT_DIR, { recursive: true });
+
   let command = 'pnpm run build';
   if (packageName) {
     command += ` --filter={./packages/${packageName}}`;

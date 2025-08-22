@@ -26,7 +26,7 @@ jobs:
         run: |
           npm install -g pnpm tsx
           pnpm install
-          tsx scripts/compile.build.ts
+          pnpm run prepack
 
       - name: Prepare deployment directory
         run: |

@@ -135,8 +135,8 @@ export const SAT_APP_STYLES = `
     border: 1px solid #ddd;
     border-radius: 4px;
     font-size: 12px;
-    max-height: 106px;
-    min-height: 106px;
+    max-height: 98px;
+    min-height: 98px;
     overflow-y: auto;
     padding: 4px;
   }

@@ -40,20 +40,23 @@ export const StatusState = {
   IDLE: 'idle',
   RUNNING: 'running',
   STOPPED: 'stopped',
+  WAITING: 'waiting',
 } as const;
 
 export const STATUS_COLORS = {
   idle: '#6b7280',
   running: '#22c55e',
   stopped: '#ef4444',
+  waiting: '#facc15',
 } as const;
 
 export const STATUS_TEXTS = {
   idle: 'Idle',
   running: 'Running',
   stopped: 'Stopped',
+  waiting: 'Waiting',
 } as const;
 
 export const STORAGE_CONFIG_KEY = 'sat_config';
 
-export const STORAGE_RUNNER_KEY = 'sat_runner';
+export const STORAGE_AUTORUN_KEY = 'sat_autorun';

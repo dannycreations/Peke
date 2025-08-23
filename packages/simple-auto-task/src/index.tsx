@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 
 import { App } from './app/App';
-import { STORAGE_CONFIG_KEY, STORAGE_RUNNER_KEY } from './app/constants';
+import { STORAGE_AUTORUN_KEY, STORAGE_CONFIG_KEY } from './app/constants';
 import { SAT_APP_STYLES, SAT_GLOBAL_STYLES } from './app/styles';
 
 const ROOT_ELEMENT_ID = 'sat-root';
@@ -73,19 +73,19 @@ function main(): void {
     const originalClear = Storage.prototype.clear;
     Storage.prototype.clear = function (this: Storage): void {
       const config = this.getItem(STORAGE_CONFIG_KEY);
-      const runner = this.getItem(STORAGE_RUNNER_KEY);
+      const runner = this.getItem(STORAGE_AUTORUN_KEY);
       originalClear.call(this);
       if (config) {
         this.setItem(STORAGE_CONFIG_KEY, config);
       }
       if (runner) {
-        this.setItem(STORAGE_RUNNER_KEY, runner);
+        this.setItem(STORAGE_AUTORUN_KEY, runner);
       }
     };
 
     const originalRemoveItem = Storage.prototype.removeItem;
     Storage.prototype.removeItem = function (this: Storage, key: string): void {
-      if (key === STORAGE_CONFIG_KEY || key === STORAGE_RUNNER_KEY) {
+      if (key === STORAGE_CONFIG_KEY || key === STORAGE_AUTORUN_KEY) {
         console.warn(`SAT Panel: Attempt to remove protected key "${key}" was blocked.`);
         return;
       }

@@ -33,4 +33,4 @@ export interface RuleOptions {
   readonly parentSelector?: string;
 }
 
-export type StatusState = 'idle' | 'running' | 'stopped';
+export type StatusState = 'idle' | 'running' | 'stopped' | 'waiting';

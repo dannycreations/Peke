@@ -10,6 +10,7 @@ interface AppState {
   readonly highlightedRuleIndex: number | null;
   readonly isPicking: boolean;
   readonly isRunning: boolean;
+  readonly isAutoRun: boolean;
   readonly lastHoveredElement: Element | null;
   readonly selectorList: ReadonlyArray<Rule>;
   readonly status: StatusState;
@@ -29,6 +30,7 @@ interface AppActions {
   readonly setHighlightedRuleIndex: (index: number | null) => void;
   readonly setIsPicking: (isPicking: boolean) => void;
   readonly setIsRunning: (isRunning: boolean) => void;
+  readonly setIsAutoRun: (isPending: boolean) => void;
   readonly setLastHoveredElement: (element: Element | null) => void;
   readonly setSelectorList: (selectorList: ReadonlyArray<Rule>) => void;
   readonly setStatus: (status: StatusState) => void;
@@ -41,6 +43,7 @@ const initialState: AppState = {
   highlightedRuleIndex: null,
   isPicking: false,
   isRunning: false,
+  isAutoRun: false,
   lastHoveredElement: null,
   selectorList: [],
   status: StatusStateConst.IDLE,
@@ -79,6 +82,10 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
 
   setIsRunning: (isRunning: boolean) => {
     set({ isRunning });
+  },
+
+  setIsAutoRun: (isAutoRun: boolean) => {
+    set({ isAutoRun });
   },
 
   setLastHoveredElement: (element: Element | null) => {

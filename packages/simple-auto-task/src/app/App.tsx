@@ -7,7 +7,7 @@ import { useElementPicker } from '../hooks/useElementPicker';
 import { usePanelDrag } from '../hooks/usePanelDrag';
 import { useTaskRunner } from '../hooks/useTaskRunner';
 import { useAppStore } from '../stores/appStore';
-import { ActionType as ActionTypeConst, DEFAULT_CONFIG, StatusState as StatusStateConst, STORAGE_RUNNER_KEY } from './constants';
+import { ActionType as ActionTypeConst, DEFAULT_CONFIG, StatusState as StatusStateConst, STORAGE_AUTORUN_KEY } from './constants';
 
 import type { Rule } from './types';
 
@@ -24,16 +24,19 @@ export const App: FC = memo(() => {
   const editingRuleId = useAppStore((s) => s.editingRuleId);
   const highlightState = useAppStore((s) => s.highlightState);
   const highlightedRuleIndex = useAppStore((s) => s.highlightedRuleIndex);
+  const isAutoRun = useAppStore((s) => s.isAutoRun);
   const isPicking = useAppStore((s) => s.isPicking);
   const isRunning = useAppStore((s) => s.isRunning);
   const removeRule = useAppStore((s) => s.removeRule);
   const selectorList = useAppStore((s) => s.selectorList);
+  const setIsAutoRun = useAppStore((s) => s.setIsAutoRun);
   const setEditingRuleId = useAppStore((s) => s.setEditingRuleId);
   const setIsRunning = useAppStore((s) => s.setIsRunning);
   const setStatus = useAppStore((s) => s.setStatus);
   const status = useAppStore((s) => s.status);
   const updateRule = useAppStore((s) => s.updateRule);
 
+  const autoStartTimeoutRef = useRef<number | null>(null);
   const panelContainerRef = useRef<HTMLDivElement | null>(null);
   const rulesPanelRef = useRef<HTMLDivElement | null>(null);
   const selectorInputRef = useRef<HTMLInputElement | null>(null);
@@ -43,7 +46,7 @@ export const App: FC = memo(() => {
   const onTimeout: () => void = useCallback(() => {
     setIsRunning(false);
     saveConfigNow();
-    localStorage.setItem(STORAGE_RUNNER_KEY, 'true');
+    localStorage.setItem(STORAGE_AUTORUN_KEY, 'true');
     window.location.reload();
   }, [saveConfigNow, setIsRunning]);
 
@@ -209,26 +212,44 @@ export const App: FC = memo(() => {
 
   const handleStart: () => void = useCallback(() => {
     startRunner();
-    localStorage.setItem(STORAGE_RUNNER_KEY, 'true');
+    localStorage.setItem(STORAGE_AUTORUN_KEY, 'true');
   }, [startRunner]);
 
   const handleStop: () => void = useCallback(() => {
-    stopRunner();
-    localStorage.setItem(STORAGE_RUNNER_KEY, 'false');
-  }, [stopRunner]);
+    if (autoStartTimeoutRef.current) {
+      clearTimeout(autoStartTimeoutRef.current);
+      autoStartTimeoutRef.current = null;
+      setIsAutoRun(false);
+      setStatus(StatusStateConst.STOPPED);
+    } else {
+      stopRunner();
+    }
+    localStorage.setItem(STORAGE_AUTORUN_KEY, 'false');
+  }, [stopRunner, setIsAutoRun, setStatus]);
 
   useEffect(() => {
-    setStatus(StatusStateConst.IDLE);
-  }, [setStatus]);
-
-  useEffect(() => {
-    const autoStart: string | null = localStorage.getItem(STORAGE_RUNNER_KEY);
+    const autoStart: string | null = localStorage.getItem(STORAGE_AUTORUN_KEY);
     if (autoStart !== 'true') {
+      setStatus(StatusStateConst.IDLE);
       return;
     }
 
     const startWhenReady = (): void => {
-      setTimeout(handleStart, 100);
+      if (useAppStore.getState().isRunning) {
+        return;
+      }
+
+      setIsAutoRun(true);
+      setStatus(StatusStateConst.WAITING);
+
+      autoStartTimeoutRef.current = window.setTimeout(() => {
+        if (useAppStore.getState().isAutoRun) {
+          autoStartTimeoutRef.current = null;
+          setIsAutoRun(false);
+          startRunner();
+          localStorage.setItem(STORAGE_AUTORUN_KEY, 'true');
+        }
+      }, 100);
     };
 
     if (document.readyState === 'complete') {
@@ -242,9 +263,18 @@ export const App: FC = memo(() => {
 
       return () => {
         window.removeEventListener('load', onLoad);
+        if (autoStartTimeoutRef.current) {
+          clearTimeout(autoStartTimeoutRef.current);
+        }
       };
     }
-  }, [handleStart]);
+
+    return () => {
+      if (autoStartTimeoutRef.current) {
+        clearTimeout(autoStartTimeoutRef.current);
+      }
+    };
+  }, [setIsAutoRun, setStatus, startRunner]);
 
   useEffect(() => {
     if (panelContainerRef.current && config.position) {
@@ -285,6 +315,7 @@ export const App: FC = memo(() => {
           cycleDelay={config.cycleDelay}
           highlightState={highlightState}
           highlightedRuleIndex={highlightedRuleIndex}
+          isAutoRun={isAutoRun}
           isRunning={isRunning}
           onAddSelector={handleAddSelector}
           onConfigChange={handleConfigChange}

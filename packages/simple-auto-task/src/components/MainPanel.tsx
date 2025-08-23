@@ -8,6 +8,7 @@ interface MainPanelProps {
   readonly cycleDelay: number;
   readonly highlightState: HighlightState;
   readonly highlightedRuleIndex: number | null;
+  readonly isAutoRun: boolean;
   readonly isRunning: boolean;
   readonly onAddSelector: () => void;
   readonly onConfigChange: (event: ChangeEvent<HTMLInputElement>) => void;
@@ -42,6 +43,7 @@ export const MainPanel = memo<MainPanelProps>(
     cycleDelay,
     highlightState,
     highlightedRuleIndex,
+    isAutoRun,
     isRunning,
     onAddSelector,
     onConfigChange,
@@ -152,10 +154,10 @@ export const MainPanel = memo<MainPanelProps>(
           ))}
 
           <div className="sat-btn-group">
-            <button id="sat-start-btn" className="sat-panel-button" disabled={isRunning || selectorList.length === 0} onClick={onStart}>
+            <button id="sat-start-btn" className="sat-panel-button" disabled={isRunning || isAutoRun || selectorList.length === 0} onClick={onStart}>
               Start
             </button>
-            <button id="sat-stop-btn" className="sat-panel-button" disabled={!isRunning} onClick={onStop}>
+            <button id="sat-stop-btn" className="sat-panel-button" disabled={!isRunning && !isAutoRun} onClick={onStop}>
               Stop
             </button>
           </div>

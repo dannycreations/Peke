@@ -1,8 +1,8 @@
 export type ActionType = 'CLICK' | 'DELETE';
 
 export interface Config {
+  readonly visible: boolean;
   readonly cycleDelay: number;
-  readonly isPanelVisible: boolean;
   readonly position: Position;
   readonly selectors: ReadonlyArray<Rule>;
   readonly stepDelay: number;
@@ -12,6 +12,8 @@ export interface Config {
 export type DeleteActionType = 'self' | 'parent' | 'custom';
 
 export type HighlightState = 'waiting' | 'success' | 'idle';
+
+export type StatusState = 'idle' | 'running' | 'stopped' | 'waiting';
 
 export interface Position {
   readonly left: number | null;
@@ -32,5 +34,3 @@ export interface RuleOptions {
   readonly ignoreWait: boolean;
   readonly parentSelector?: string;
 }
-
-export type StatusState = 'idle' | 'running' | 'stopped' | 'waiting';

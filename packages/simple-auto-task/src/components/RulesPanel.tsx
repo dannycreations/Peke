@@ -1,4 +1,4 @@
-import { ChangeEvent, KeyboardEvent, memo, RefObject, useCallback, useEffect, useRef, useState } from 'react';
+import { KeyboardEvent, memo, RefObject, useCallback, useEffect, useRef, useState } from 'react';
 
 import { ActionType as ActionTypeConst } from '../app/constants';
 
@@ -37,13 +37,13 @@ export const RulesPanel = memo<RulesPanelProps>(({ editingRule, onCloseRules, on
     }
   }, [editingRule]);
 
-  const handlePick: () => void = useCallback(() => {
+  const handlePick = useCallback(() => {
     startPicking((newSelector: string) => {
       setSelector(newSelector);
     });
   }, [startPicking]);
 
-  const handleSave: () => void = useCallback(() => {
+  const handleSave = useCallback(() => {
     if (!editingRule) {
       return;
     }
@@ -82,7 +82,7 @@ export const RulesPanel = memo<RulesPanelProps>(({ editingRule, onCloseRules, on
     onSaveRule(updatedRule);
   }, [action, customDeleteSelector, deleteActionType, editingRule, ignoreWait, onSaveRule, parentSelector, selector]);
 
-  const handleTest: () => void = useCallback(() => {
+  const handleTest = useCallback(() => {
     onTestSelector(selector, selectorInputRef.current);
   }, [onTestSelector, selector]);
 
@@ -104,7 +104,7 @@ export const RulesPanel = memo<RulesPanelProps>(({ editingRule, onCloseRules, on
             style={{ marginBottom: '4px' }}
             type="text"
             value={selector}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setSelector(e.target.value)}
+            onChange={(e) => setSelector(e.target.value)}
             onKeyDown={handleKeyDown}
           />
           <div className="sat-btn-group">
@@ -135,7 +135,7 @@ export const RulesPanel = memo<RulesPanelProps>(({ editingRule, onCloseRules, on
             id="sat-rules-panel-action"
             className="sat-panel-select"
             value={action}
-            onChange={(e: ChangeEvent<HTMLSelectElement>) => setAction(e.target.value as ActionType)}
+            onChange={(e) => setAction(e.target.value as ActionType)}
             onKeyDown={handleKeyDown}
           >
             <option value={ActionTypeConst.CLICK}>Click Element</option>
@@ -151,7 +151,7 @@ export const RulesPanel = memo<RulesPanelProps>(({ editingRule, onCloseRules, on
                 id="sat-rules-panel-delete-type"
                 className="sat-panel-select"
                 value={deleteActionType}
-                onChange={(e: ChangeEvent<HTMLSelectElement>) => setDeleteActionType(e.target.value as DeleteActionType)}
+                onChange={(e) => setDeleteActionType(e.target.value as DeleteActionType)}
                 onKeyDown={handleKeyDown}
               >
                 <option value="self">Delete Self</option>
@@ -167,7 +167,7 @@ export const RulesPanel = memo<RulesPanelProps>(({ editingRule, onCloseRules, on
                   className="sat-panel-input"
                   type="text"
                   value={parentSelector}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setParentSelector(e.target.value)}
+                  onChange={(e) => setParentSelector(e.target.value)}
                   onKeyDown={handleKeyDown}
                 />
               </label>
@@ -180,7 +180,7 @@ export const RulesPanel = memo<RulesPanelProps>(({ editingRule, onCloseRules, on
                   className="sat-panel-input"
                   type="text"
                   value={customDeleteSelector}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomDeleteSelector(e.target.value)}
+                  onChange={(e) => setCustomDeleteSelector(e.target.value)}
                   onKeyDown={handleKeyDown}
                 />
               </label>
@@ -191,12 +191,7 @@ export const RulesPanel = memo<RulesPanelProps>(({ editingRule, onCloseRules, on
         <label className="sat-panel-label sat-switch-label">
           <span>Ignore wait</span>
           <div className="sat-switch">
-            <input
-              id="sat-rules-ignore-wait-checkbox"
-              type="checkbox"
-              checked={ignoreWait}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setIgnoreWait(e.target.checked)}
-            />
+            <input id="sat-rules-ignore-wait-checkbox" type="checkbox" checked={ignoreWait} onChange={(e) => setIgnoreWait(e.target.checked)} />
             <span className="sat-switch-slider"></span>
           </div>
         </label>

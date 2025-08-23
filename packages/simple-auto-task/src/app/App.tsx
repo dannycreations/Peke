@@ -36,14 +36,13 @@ export const App: FC = memo(() => {
   const status = useAppStore((s) => s.status);
   const updateRule = useAppStore((s) => s.updateRule);
 
-  const autoStartTimeoutRef = useRef<number | null>(null);
   const panelContainerRef = useRef<HTMLDivElement | null>(null);
   const rulesPanelRef = useRef<HTMLDivElement | null>(null);
   const selectorInputRef = useRef<HTMLInputElement | null>(null);
 
   const { config, saveConfigNow, updateConfig } = useConfigPersistence();
 
-  const onTimeout: () => void = useCallback(() => {
+  const onTimeout = useCallback(() => {
     setIsRunning(false);
     saveConfigNow();
     localStorage.setItem(STORAGE_AUTORUN_KEY, 'true');
@@ -52,9 +51,9 @@ export const App: FC = memo(() => {
 
   const { start: startRunner, stop: stopRunner } = useTaskRunner({
     cycleDelay: config.cycleDelay,
-    onTimeout,
     stepDelay: config.stepDelay,
     waitDelay: config.waitDelay,
+    onTimeout,
   });
 
   const { startPicking } = useElementPicker({
@@ -62,7 +61,7 @@ export const App: FC = memo(() => {
     rulesPanelRef,
   });
 
-  const handleDragEnd: () => void = useCallback(() => {
+  const handleDragEnd = useCallback(() => {
     if (panelContainerRef.current) {
       const top: number = panelContainerRef.current.offsetTop;
       const left: number | null = panelContainerRef.current.style.left ? parseInt(panelContainerRef.current.style.left, 10) : null;
@@ -80,12 +79,11 @@ export const App: FC = memo(() => {
     rulesPanelRef,
   });
 
-  const editingRule: Rule | null = useMemo(
-    () => (editingRuleId !== null ? selectorList.find((r) => r.id === editingRuleId) || null : null),
-    [editingRuleId, selectorList],
-  );
+  const editingRule = useMemo(() => {
+    return editingRuleId !== null ? selectorList.find((r) => r.id === editingRuleId) || null : null;
+  }, [editingRuleId, selectorList]);
 
-  const handleAddSelector: () => void = useCallback(() => {
+  const handleAddSelector = useCallback(() => {
     const newSelector = selectorInputRef.current?.value.trim();
     if (!newSelector) {
       return;
@@ -103,14 +101,14 @@ export const App: FC = memo(() => {
     }
   }, [addRule]);
 
-  const handleCloseRules: () => void = useCallback(() => {
+  const handleCloseRules = useCallback(() => {
     if (rulesPanelRef.current) {
       rulesPanelRef.current.style.display = 'none';
     }
     setEditingRuleId(null);
   }, [setEditingRuleId]);
 
-  const handleConfigChange: (event: ChangeEvent<HTMLInputElement>) => void = useCallback(
+  const handleConfigChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       const { name, value } = event.target;
       const numericValue = parseInt(value, 10);
@@ -121,7 +119,7 @@ export const App: FC = memo(() => {
     [updateConfig],
   );
 
-  const handleListClick: (event: MouseEvent<HTMLDivElement>) => void = useCallback(
+  const handleListClick = useCallback(
     (event: MouseEvent<HTMLDivElement>) => {
       const target = (event.target as HTMLElement).closest('.sat-selector-item-btn');
       if (!target) {
@@ -156,7 +154,7 @@ export const App: FC = memo(() => {
     [selectorList, removeRule, setEditingRuleId, editingRuleId, handleCloseRules],
   );
 
-  const handleMainPanelPick: () => void = useCallback(() => {
+  const handleMainPanelPick = useCallback(() => {
     startPicking((selector: string) => {
       if (selectorInputRef.current) {
         selectorInputRef.current.value = selector;
@@ -164,45 +162,42 @@ export const App: FC = memo(() => {
     });
   }, [startPicking]);
 
-  const testSelector: (selector: string | undefined, inputEl: HTMLInputElement | null) => void = useCallback(
-    (selector: string | undefined, inputEl: HTMLInputElement | null) => {
-      if (!inputEl) {
-        return;
-      }
-      inputEl.classList.remove('sat-input-error');
+  const testSelector = useCallback((selector: string | undefined, inputEl: HTMLInputElement | null) => {
+    if (!inputEl) {
+      return;
+    }
+    inputEl.classList.remove('sat-input-error');
 
-      const showError = (): void => {
-        inputEl.classList.add('sat-input-error');
-        setTimeout(() => {
-          inputEl.classList.remove('sat-input-error');
-        }, 1500);
-      };
+    const showError = () => {
+      inputEl.classList.add('sat-input-error');
+      setTimeout(() => {
+        inputEl.classList.remove('sat-input-error');
+      }, 1500);
+    };
 
-      if (!selector) {
-        showError();
-        return;
-      }
+    if (!selector) {
+      showError();
+      return;
+    }
 
-      try {
-        const element = $(selector);
-        if (element.length > 0) {
-          element[0].style.outline = '2px solid red';
-          setTimeout(() => (element[0].style.outline = ''), 800);
-        } else {
-          showError();
-        }
-      } catch (e) {
+    try {
+      const element = $(selector);
+      if (element.length > 0) {
+        element[0].style.outline = '2px solid red';
+        setTimeout(() => (element[0].style.outline = ''), 800);
+      } else {
         showError();
       }
-    },
-    [],
-  );
+    } catch {
+      showError();
+    }
+  }, []);
 
-  const handleMainPanelTestSelector: () => void = useCallback(() => {
+  const handleMainPanelTestSelector = useCallback(() => {
     testSelector(selectorInputRef.current?.value.trim(), selectorInputRef.current);
   }, [testSelector]);
 
-  const handleSaveRule: (updatedRule: Rule) => void = useCallback(
+  const handleSaveRule = useCallback(
     (updatedRule: Rule) => {
       updateRule(updatedRule);
       handleCloseRules();
@@ -210,52 +205,46 @@ export const App: FC = memo(() => {
     [handleCloseRules, updateRule],
   );
 
-  const handleStart: () => void = useCallback(() => {
+  const handleStart = useCallback(() => {
     startRunner();
-    localStorage.setItem(STORAGE_AUTORUN_KEY, 'true');
   }, [startRunner]);
 
-  const handleStop: () => void = useCallback(() => {
-    if (autoStartTimeoutRef.current) {
-      clearTimeout(autoStartTimeoutRef.current);
-      autoStartTimeoutRef.current = null;
-      setIsAutoRun(false);
-      setStatus(StatusStateConst.STOPPED);
-    } else {
-      stopRunner();
-    }
+  const handleStop = useCallback(() => {
+    stopRunner();
+    setIsAutoRun(false);
+    setStatus(StatusStateConst.STOPPED);
     localStorage.setItem(STORAGE_AUTORUN_KEY, 'false');
   }, [stopRunner, setIsAutoRun, setStatus]);
 
   useEffect(() => {
-    const autoStart: string | null = localStorage.getItem(STORAGE_AUTORUN_KEY);
-    if (autoStart !== 'true') {
-      setStatus(StatusStateConst.IDLE);
+    const isRunning = useAppStore.getState().isRunning;
+    if (isRunning) {
       return;
     }
 
-    const startWhenReady = (): void => {
-      if (useAppStore.getState().isRunning) {
+    const autoStart = localStorage.getItem(STORAGE_AUTORUN_KEY);
+    if (autoStart !== 'true') {
+      return;
+    }
+
+    setIsAutoRun(true);
+    setStatus(StatusStateConst.WAITING);
+
+    const startWhenReady = () => {
+      const isAutoRun = useAppStore.getState().isAutoRun;
+      const isRunning = useAppStore.getState().isRunning;
+      if (!isAutoRun || isRunning) {
         return;
       }
 
-      setIsAutoRun(true);
-      setStatus(StatusStateConst.WAITING);
-
-      autoStartTimeoutRef.current = window.setTimeout(() => {
-        if (useAppStore.getState().isAutoRun) {
-          autoStartTimeoutRef.current = null;
-          setIsAutoRun(false);
-          startRunner();
-          localStorage.setItem(STORAGE_AUTORUN_KEY, 'true');
-        }
-      }, 100);
+      startRunner();
+      setIsAutoRun(false);
     };
 
     if (document.readyState === 'complete') {
       startWhenReady();
     } else {
-      const onLoad = (): void => {
+      const onLoad = () => {
         startWhenReady();
         window.removeEventListener('load', onLoad);
       };
@@ -263,17 +252,8 @@ export const App: FC = memo(() => {
 
       return () => {
         window.removeEventListener('load', onLoad);
-        if (autoStartTimeoutRef.current) {
-          clearTimeout(autoStartTimeoutRef.current);
-        }
       };
     }
-
-    return () => {
-      if (autoStartTimeoutRef.current) {
-        clearTimeout(autoStartTimeoutRef.current);
-      }
-    };
   }, [setIsAutoRun, setStatus, startRunner]);
 
   useEffect(() => {
@@ -297,7 +277,7 @@ export const App: FC = memo(() => {
       }
 
       if (event.key === '`') {
-        updateConfig({ isPanelVisible: !config.isPanelVisible });
+        updateConfig({ visible: !config.visible });
       }
     };
 
@@ -305,11 +285,11 @@ export const App: FC = memo(() => {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [config.isPanelVisible, updateConfig]);
+  }, [config.visible, updateConfig]);
 
   return (
     <>
-      <div style={{ visibility: config.isPanelVisible ? 'visible' : 'hidden', pointerEvents: config.isPanelVisible ? 'auto' : 'none' }}>
+      <div style={{ visibility: config.visible ? 'visible' : 'hidden', pointerEvents: config.visible ? 'auto' : 'none' }}>
         <MainPanel
           ref={panelContainerRef}
           cycleDelay={config.cycleDelay}

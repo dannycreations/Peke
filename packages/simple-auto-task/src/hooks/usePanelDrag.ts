@@ -1,3 +1,4 @@
+import { noop } from 'es-toolkit';
 import { RefObject, useCallback, useEffect, useRef } from 'react';
 
 interface UsePanelDragProps {
@@ -10,7 +11,7 @@ export const usePanelDrag = ({ mainPanelRef, rulesPanelRef, onDragEnd }: UsePane
   const initialOffsetX = useRef<number>(0);
   const initialOffsetY = useRef<number>(0);
 
-  const calculateInitialOffsets: () => void = useCallback(() => {
+  const calculateInitialOffsets = useCallback(() => {
     if (mainPanelRef.current && rulesPanelRef.current && rulesPanelRef.current.style.display !== 'none') {
       const userPanelRect = mainPanelRef.current.getBoundingClientRect();
       const rulesPanelRect = rulesPanelRef.current.getBoundingClientRect();
@@ -19,7 +20,7 @@ export const usePanelDrag = ({ mainPanelRef, rulesPanelRef, onDragEnd }: UsePane
     }
   }, [mainPanelRef, rulesPanelRef]);
 
-  const handlePanelsDrag: (draggedElement: HTMLElement, deltaX: number, deltaY: number) => void = useCallback(
+  const handlePanelsDrag = useCallback(
     (draggedElement: HTMLElement, deltaX: number, deltaY: number) => {
       draggedElement.style.top = `${draggedElement.offsetTop - deltaY}px`;
       draggedElement.style.left = `${draggedElement.offsetLeft - deltaX}px`;
@@ -38,11 +39,7 @@ export const usePanelDrag = ({ mainPanelRef, rulesPanelRef, onDragEnd }: UsePane
     [mainPanelRef, rulesPanelRef],
   );
 
-  const makeDraggable: (
-    element: HTMLElement,
-    handle: HTMLElement,
-    onDragCallback: (draggedElement: HTMLElement, deltaX: number, deltaY: number) => void,
-  ) => () => void = useCallback(
+  const makeDraggable = useCallback(
     (element: HTMLElement, handle: HTMLElement, onDragCallback: (draggedElement: HTMLElement, deltaX: number, deltaY: number) => void) => {
       let mouseStartX = 0;
       let mouseStartY = 0;
@@ -93,8 +90,8 @@ export const usePanelDrag = ({ mainPanelRef, rulesPanelRef, onDragEnd }: UsePane
     const mainPanelHeader = mainPanelRef.current?.querySelector('#sat-panel-header') as HTMLElement | null;
     const rulesPanelHeader = rulesPanelRef.current?.querySelector('#sat-rules-panel-header') as HTMLElement | null;
 
-    let cleanupMainPanel: () => void = () => {};
-    let cleanupRulesPanel: () => void = () => {};
+    let cleanupMainPanel = noop;
+    let cleanupRulesPanel = noop;
 
     if (mainPanelRef.current && mainPanelHeader) {
       cleanupMainPanel = makeDraggable(mainPanelRef.current, mainPanelHeader, handlePanelsDrag);

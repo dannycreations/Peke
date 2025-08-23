@@ -18,7 +18,7 @@ export const useElementPicker = ({ panelContainerRef, rulesPanelRef }: UseElemen
   const setLastHoveredElement = useAppStore((state) => state.setLastHoveredElement);
   const onElementPickedRef = useRef<(selector: string) => void>(() => {});
 
-  const startPicking: (onElementPicked: (selector: string) => void) => void = useCallback(
+  const startPicking = useCallback(
     (onElementPicked: (selector: string) => void) => {
       const { isPicking: currentIsPicking, isRunning } = useAppStore.getState();
       if (isRunning || currentIsPicking) return;

@@ -5,13 +5,13 @@ import { useCallback, useEffect, useRef } from 'react';
 import { ActionType as ActionTypeConst, HighlightState as HighlightStateConst, StatusState as StatusStateConst } from '../app/constants';
 import { useAppStore } from '../stores/appStore';
 
-import type { Rule } from '../app/types';
+import type { Config, Rule } from '../app/types';
 
 interface UseTaskRunnerProps {
   readonly cycleDelay: number;
-  readonly onTimeout: () => void;
   readonly stepDelay: number;
   readonly waitDelay: number;
+  readonly onTimeout: () => void;
 }
 
 interface UseTaskRunnerReturn {
@@ -19,7 +19,7 @@ interface UseTaskRunnerReturn {
   readonly stop: () => void;
 }
 
-export const useTaskRunner = ({ cycleDelay, onTimeout, stepDelay, waitDelay }: UseTaskRunnerProps): UseTaskRunnerReturn => {
+export const useTaskRunner = ({ cycleDelay, stepDelay, waitDelay, onTimeout }: UseTaskRunnerProps): UseTaskRunnerReturn => {
   const isRunning = useAppStore((state) => state.isRunning);
   const selectorList = useAppStore((state) => state.selectorList);
   const setHighlightState = useAppStore((state) => state.setHighlightState);
@@ -27,13 +27,13 @@ export const useTaskRunner = ({ cycleDelay, onTimeout, stepDelay, waitDelay }: U
   const setIsRunning = useAppStore((state) => state.setIsRunning);
   const setStatus = useAppStore((state) => state.setStatus);
 
-  const delaysRef = useRef<{ stepDelay: number; waitDelay: number; cycleDelay: number }>({ stepDelay, waitDelay, cycleDelay });
+  const delaysRef = useRef<Pick<Config, 'stepDelay' | 'waitDelay' | 'cycleDelay'>>({ stepDelay, waitDelay, cycleDelay });
 
   useEffect(() => {
     delaysRef.current = { stepDelay, waitDelay, cycleDelay };
   }, [stepDelay, waitDelay, cycleDelay]);
 
-  const executeRuleAction: (rule: Rule) => void = useCallback((rule: Rule) => {
+  const executeRuleAction = useCallback((rule: Rule) => {
     const element = $(rule.selector);
     if (element.length === 0) {
       return;
@@ -67,7 +67,7 @@ export const useTaskRunner = ({ cycleDelay, onTimeout, stepDelay, waitDelay }: U
     }
   }, []);
 
-  const waitForElement: (rule: Rule, timeoutMs: number) => Promise<boolean> = useCallback(async (rule: Rule, timeoutMs: number): Promise<boolean> => {
+  const waitForElement = useCallback(async (rule: Rule, timeoutMs: number): Promise<boolean> => {
     if ($(rule.selector).length > 0) {
       return true;
     }
@@ -97,10 +97,12 @@ export const useTaskRunner = ({ cycleDelay, onTimeout, stepDelay, waitDelay }: U
     });
   }, []);
 
-  const runCycle: () => Promise<void> = useCallback(async () => {
+  const runCycle = useCallback(async () => {
     while (useAppStore.getState().isRunning) {
       for (const [index, rule] of useAppStore.getState().selectorList.entries()) {
-        if (!useAppStore.getState().isRunning) return;
+        if (!useAppStore.getState().isRunning) {
+          return;
+        }
 
         setHighlightedRuleIndex(index);
         setHighlightState(HighlightStateConst.WAITING);
@@ -108,7 +110,9 @@ export const useTaskRunner = ({ cycleDelay, onTimeout, stepDelay, waitDelay }: U
         const timeoutMs: number = delaysRef.current.waitDelay;
         const elementFound: boolean = await waitForElement(rule, timeoutMs);
 
-        if (!useAppStore.getState().isRunning) return;
+        if (!useAppStore.getState().isRunning) {
+          return;
+        }
 
         if (elementFound) {
           executeRuleAction(rule);
@@ -132,14 +136,20 @@ export const useTaskRunner = ({ cycleDelay, onTimeout, stepDelay, waitDelay }: U
     }
   }, [executeRuleAction, onTimeout, setHighlightState, setHighlightedRuleIndex, waitForElement]);
 
-  const start: () => void = useCallback(() => {
-    if (selectorList.length === 0 || isRunning) return;
+  const start = useCallback(() => {
+    if (selectorList.length === 0 || isRunning) {
+      return;
+    }
+
     setIsRunning(true);
     setStatus(StatusStateConst.RUNNING);
   }, [isRunning, selectorList.length, setIsRunning, setStatus]);
 
-  const stop: () => void = useCallback(() => {
-    if (!isRunning) return;
+  const stop = useCallback(() => {
+    if (!isRunning) {
+      return;
+    }
+
     setIsRunning(false);
     setStatus(StatusStateConst.STOPPED);
   }, [isRunning, setIsRunning, setStatus]);

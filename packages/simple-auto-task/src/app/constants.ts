@@ -1,13 +1,16 @@
 import type { Config } from './types';
 
+export const STORAGE_CONFIG_KEY = 'sat_config';
+export const STORAGE_AUTORUN_KEY = 'sat_autorun';
+
 export const ActionType = {
   CLICK: 'CLICK',
   DELETE: 'DELETE',
 } as const;
 
 export const DEFAULT_CONFIG: Config = {
+  visible: true,
   cycleDelay: 1000,
-  isPanelVisible: true,
   position: {
     left: 10,
     right: null,
@@ -56,7 +59,3 @@ export const STATUS_TEXTS = {
   stopped: 'Stopped',
   waiting: 'Waiting',
 } as const;
-
-export const STORAGE_CONFIG_KEY = 'sat_config';
-
-export const STORAGE_AUTORUN_KEY = 'sat_autorun';

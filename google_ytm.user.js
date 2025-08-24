@@ -1,0 +1,14 @@
+// ==UserScript==
+// @name         Youtube Music Tweak
+// @description  -
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=music.youtube.com
+// @author       dannycreations
+// @version      0.0.1
+// @namespace    https://github.com/dannycreations/Peke
+// @homepage     https://github.com/dannycreations/Peke
+// @match        *://music.youtube.com/*
+// @grant        none
+// @run-at       document-start
+// ==/UserScript==
+
+!function(){"use strict";function e(e,t,{signal:n,edges:l}={}){let r,o=null;const c=null!=l&&l.includes("leading"),i=null==l||l.includes("trailing"),s=()=>{null!==o&&(e.apply(r,o),r=void 0,o=null)};let u=null;const d=()=>{null!=u&&clearTimeout(u),u=setTimeout(()=>{u=null,i&&s(),a()},t)},a=()=>{null!==u&&(clearTimeout(u),u=null),r=void 0,o=null},m=function(...e){if(n?.aborted)return;r=this,o=e;const t=null==u;d(),c&&t&&s()};return m.schedule=d,m.cancel=a,m.flush=()=>{s()},n?.addEventListener("abort",a,{once:!0}),m}let t=0,n=null;function l(e){const t=e.querySelectorAll("ytmusic-responsive-list-item-renderer"),n=t.length;let l=null;if(n>0){const e=t[0].querySelector("a[href]");e?.href&&(l=e.href)}return{length:n,firstElement:l}}function r(){const e=document.querySelector("ytmusic-playlist-shelf-renderer #contents");if(!e)return;const r=e.querySelector("ytmusic-continuation-item-renderer");r&&r.remove();const o=e.querySelectorAll("ytmusic-responsive-list-item-renderer"),c=Array.from(o).map(e=>{const t=e.querySelector('yt-formatted-string[title*=" plays"]');return{element:e,plays:t?function(e){if(!e)return 0;const t=e.trim().toUpperCase(),n=parseFloat(t);if(isNaN(n))return 0;let l=1;return t.includes("K")?l=1e3:t.includes("M")?l=1e6:t.includes("B")&&(l=1e9),n*l}(t.title):0}}),i=()=>{r&&e.appendChild(r)};if(c.length<2)return void i();c.sort((e,t)=>t.plays-e.plays);const s=document.createDocumentFragment();c.forEach(e=>{s.appendChild(e.element)}),e.textContent="",e.appendChild(s),i();const u=l(e);t=u.length,n=u.firstElement}!function(e,t,n={}){switch(e){case"immediate":default:t();break;case"interactive":"loading"===document.readyState?document.addEventListener("DOMContentLoaded",t):t();break;case"complete":"complete"===document.readyState?t():window.addEventListener("load",t);break;case"dynamic":new MutationObserver(e=>{for(const l of e)0!==l.addedNodes.length&&l.addedNodes.forEach(e=>{e instanceof HTMLElement&&(n.dynamicSelector&&!e.matches(n.dynamicSelector)||t())})}).observe(document.body,{childList:!0,subtree:!0});break}}("complete",function(){r();const o=e(r,100);new MutationObserver(()=>{const e=document.querySelector("ytmusic-playlist-shelf-renderer #contents");if(e){const r=l(e),c=r.length!==t,i=r.firstElement!==n;(c||i)&&o()}}).observe(document.body,{childList:!0,subtree:!0})})}();

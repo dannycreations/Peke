@@ -1,0 +1,19 @@
+{
+  "name": "simple-fake-focus",
+  "version": "0.0.1",
+  "author": "dannycreations",
+  "license": "GPL",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest",
+    "update": "npm-check-updates -u"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dannycreations/Peke.git",
+    "directory": "packages/simple-fake-focus"
+  },
+  "homepage": "https://github.com/dannycreations/Peke"
+}

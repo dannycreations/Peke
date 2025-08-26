@@ -1,0 +1,5 @@
+{
+  "name": "Simple Fake Focus",
+  "icon": "https://png.pngtree.com/png-vector/20220623/ourmid/pngtree-eye-care-focus-logo-template-png-image_5172178.png",
+  "match": ["*://*.*/*"]
+}

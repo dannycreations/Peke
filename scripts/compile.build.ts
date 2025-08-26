@@ -1,4 +1,5 @@
 import { execSync } from 'node:child_process';
+import { rmSync } from 'node:fs';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -123,5 +124,7 @@ const currentFile = posix.resolve(fileURLToPath(import.meta.url));
 const entryFile = posix.resolve(process.argv[1]);
 
 if (currentFile === entryFile) {
+  rmSync(OUTPUT_DIR, { recursive: true, force: true });
+
   main().catch(console.trace);
 }

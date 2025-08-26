@@ -15,7 +15,7 @@ async function main(): Promise<void> {
   console.log('Server running at http://127.0.0.1:8080');
 
   const watcher = watch(await Array.fromAsync(glob('packages/*')), {
-    ignored: /(^|\/)(\.|dist)(\/|$)/,
+    ignored: /(^|\/)(\.|dist|node_modules)(\/|$)/,
     persistent: true,
     ignoreInitial: true,
   });

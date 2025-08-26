@@ -1,40 +1,10 @@
 import { setAutorun } from '@/helpers/autorun';
 import { debounce } from 'es-toolkit';
 
-function createCtrlRearranger(): () => void {
-  const SLIDE_TOGGLE = 'mat-slide-toggle';
-  const ACTIVE_TOGGLE = 'button.mdc-switch--selected';
-  const RUN_BUTTON = 'button[aria-label="Run the app"]';
-  const BUTTONS_WRAPPER = 'div.buttons-wrapper';
-
-  let isLayoutLocked = false;
-
-  return function rearrange(): void {
-    if (isLayoutLocked) {
-      return;
-    }
-
-    const slideToggle = document.querySelector(SLIDE_TOGGLE);
-    const runButton = document.querySelector(RUN_BUTTON);
-    const btnsWrapper = document.querySelector(BUTTONS_WRAPPER);
-
-    if (slideToggle && runButton && btnsWrapper) {
-      const activeToggle = slideToggle.querySelector<HTMLElement>(ACTIVE_TOGGLE);
-      if (activeToggle) {
-        activeToggle.click();
-      }
-
-      btnsWrapper.insertBefore(slideToggle, btnsWrapper.firstChild);
-      btnsWrapper.insertBefore(runButton, slideToggle.nextSibling);
-      isLayoutLocked = true;
-    }
-  };
-}
-
 function createTabManager(): () => void {
-  const TAB_LINK = 'a.mat-mdc-tab-link';
+  const TAB_LINK = 'div.tab';
   const RUNNING_ICON = 'svg.running-icon.ng-star-inserted';
-  const CLOSE_BUTTON = 'button[aria-label="Close file"]';
+  const CLOSE_BUTTON = 'button[mattooltip="Close file"]';
 
   let initialTab: Element | null = null;
 
@@ -66,14 +36,11 @@ function createTabManager(): () => void {
 }
 
 function main(): void {
-  const rearrangeCtrls = createCtrlRearranger();
   const manageTabs = createTabManager();
 
-  const debouncedRearrangeCtrls = debounce(rearrangeCtrls, 100);
   const debouncedManageTabs = debounce(manageTabs, 100);
 
   const observer = new MutationObserver(() => {
-    debouncedRearrangeCtrls();
     debouncedManageTabs();
   });
 

@@ -1,96 +1,143 @@
 /**
- * Defines the possible page loading stages for callback execution.
- * - `immediate`: Executes the callback without delay.
- * - `interactive`: Executes when the DOM is fully parsed and loaded (`DOMContentLoaded`).
- * - `complete`: Executes after the entire page, including all dependent resources
- *   like stylesheets and images, has finished loading (`load` event).
- * - `dynamic`: Executes when a new DOM node, optionally matching a specific
- *   selector, is added to the document body.
+ * Defines configuration options for the {@link runOnDynamic} function.
  */
-export type PageStage = 'immediate' | 'interactive' | 'complete' | 'dynamic';
-
-/**
- * Defines configuration options for the {@link setAutorun} function.
- */
-export interface SetAutorunOptions {
+export interface DynamicOptions {
   /**
-   * A CSS selector string. When `stage` is 'dynamic', the callback is only
-   * triggered for added nodes that match this selector. If undefined, the
-   * callback runs for any added `HTMLElement`.
+   * A CSS selector to filter which added nodes trigger the callback.
+   * If omitted, the callback runs for any added `HTMLElement`.
    */
-  readonly dynamicSelector?: string;
+  readonly selector?: string;
 }
 
 /**
- * Schedules a callback function to execute at a specified document loading stage.
+ * Executes a callback function immediately.
  *
  * @example
  * ```typescript
- * // Run a function as soon as the DOM is interactive.
- * setAutorun('interactive', () => {
- *   console.log('DOM is ready!');
- * });
- *
- * // Run a function when a specific element is dynamically added to the page.
- * setAutorun('dynamic', initComplexComponent, {
- *   dynamicSelector: '#complex-component-root'
+ * runOnImmediate(() => {
+ *   console.log('This code runs right away.');
  * });
  * ```
  *
- * @param {PageStage} stage The page loading stage at which to execute the callback. See {@link PageStage}.
- * @param {() => unknown} callback The function to execute when the specified stage is reached.
- * @param {Partial<SetAutorunOptions>=} [options={}] Configuration options, primarily for the 'dynamic' stage. See {@link SetAutorunOptions}.
+ * @param {() => unknown} callback The function to execute.
  * @returns {void}
  */
-export function setAutorun(stage: PageStage, callback: () => unknown, options: Partial<SetAutorunOptions> = {}): void {
-  switch (stage) {
-    case 'immediate':
-    default:
-      callback();
-      break;
+export function runOnImmediate(callback: () => unknown): void {
+  callback();
+}
 
-    case 'interactive': {
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', callback);
-      } else {
-        callback();
+/**
+ * Executes a callback when the DOM is interactive (`DOMContentLoaded`).
+ * If the document is already interactive or complete, the callback is run immediately.
+ *
+ * @example
+ * ```typescript
+ * runOnInteractive(() => {
+ *   console.log('DOM is ready for interaction.');
+ * });
+ * ```
+ *
+ * @param {() => unknown} callback The function to execute upon DOM interactivity.
+ * @returns {void}
+ */
+export function runOnInteractive(callback: () => unknown): void {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', callback);
+  } else {
+    callback();
+  }
+}
+
+/**
+ * Executes a callback when the page has fully loaded, including all resources like images and stylesheets.
+ * If the page is already fully loaded, the callback is run immediately.
+ *
+ * @example
+ * ```typescript
+ * runOnComplete(() => {
+ *   console.log('Page and all resources are fully loaded.');
+ * });
+ * ```
+ *
+ * @param {() => unknown} callback The function to execute upon full page load.
+ * @returns {void}
+ */
+export function runOnComplete(callback: () => unknown): void {
+  if (document.readyState === 'complete') {
+    callback();
+  } else {
+    window.addEventListener('load', callback);
+  }
+}
+
+/**
+ * Executes a callback whenever new nodes are added to the document's body.
+ * This is useful for scripts that need to act on dynamically added content.
+ *
+ * @example
+ * ```typescript
+ * // Run for any new element added to the body
+ * runOnDynamic(() => {
+ *   console.log('A new element was added to the body.');
+ * });
+ *
+ * // Run only when an element with the class 'widget' is added
+ * runOnDynamic(() => {
+ *   console.log('A new widget was added.');
+ * }, { selector: '.widget' });
+ * ```
+ *
+ * @param {() => unknown} callback The function to execute when a matching node is added.
+ * @param {DynamicOptions=} [options={}] Configuration options, such as a CSS selector to filter nodes.
+ *   See {@link DynamicOptions}.
+ * @returns {void}
+ */
+export function runOnDynamic(callback: () => unknown, options: DynamicOptions = {}): void {
+  const observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      if (mutation.addedNodes.length === 0) {
+        continue;
       }
-      break;
-    }
 
-    case 'complete': {
-      if (document.readyState === 'complete') {
-        callback();
-      } else {
-        window.addEventListener('load', callback);
-      }
-      break;
-    }
+      mutation.addedNodes.forEach((node) => {
+        if (!(node instanceof HTMLElement)) {
+          return;
+        }
 
-    case 'dynamic': {
-      const observer = new MutationObserver((mutations: MutationRecord[]) => {
-        for (const mutation of mutations) {
-          if (mutation.addedNodes.length === 0) {
-            continue;
-          }
-
-          mutation.addedNodes.forEach((node: Node) => {
-            if (!(node instanceof HTMLElement)) {
-              return;
-            }
-
-            if (!options.dynamicSelector || node.matches(options.dynamicSelector)) {
-              callback();
-            }
-          });
+        if (!options.selector || node.matches(options.selector)) {
+          callback();
         }
       });
-
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true,
-      });
-      break;
     }
-  }
+  });
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+  });
+}
+
+/**
+ * Executes a callback with mutation records whenever the document's body changes.
+ * This provides a low-level interface to the `MutationObserver` API.
+ *
+ * @example
+ * ```typescript
+ * runOnObserver((mutations) => {
+ *   for (const mutation of mutations) {
+ *     if (mutation.type === 'childList') {
+ *       console.log('A child node has been added or removed.');
+ *     }
+ *   }
+ * });
+ * ```
+ *
+ * @param {(mutations: MutationRecord[]) => unknown} callback The function to execute with the mutation records.
+ * @returns {void}
+ */
+export function runOnObserver(callback: (mutations: MutationRecord[]) => unknown): void {
+  const observer = new MutationObserver(callback);
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+  });
 }

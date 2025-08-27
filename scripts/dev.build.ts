@@ -1,5 +1,6 @@
 import { exec } from 'node:child_process';
 import { glob } from 'node:fs/promises';
+import { cwd } from 'node:process';
 import { watch } from 'chokidar';
 import { noop } from 'es-toolkit';
 
@@ -10,25 +11,26 @@ let compileTimeoutId: NodeJS.Timeout | null;
 const DEBOUNCE_DELAY = 500;
 
 async function main(): Promise<void> {
-  exec('pnpx http-server dist -c5 -a 127.0.0.1 -p 8080 -s', { cwd: process.cwd() });
+  exec('pnpx http-server dist -c5 -a 127.0.0.1 -p 8080 -s', { cwd: cwd() });
 
   console.log('Server running at http://127.0.0.1:8080');
 
-  const watcher = watch(await Array.fromAsync(glob('packages/*')), {
+  const paths = Array.fromAsync(glob('packages/*'));
+  const watcher = watch(await paths, {
     ignored: /(^|\/)(\.|dist|node_modules)(\/|$)/,
     persistent: true,
     ignoreInitial: true,
   });
 
   watcher.on('change', async (path: string) => {
+    if (isCompiling) {
+      return;
+    }
     if (compileTimeoutId) {
       clearTimeout(compileTimeoutId);
     }
 
     compileTimeoutId = setTimeout(async () => {
-      if (isCompiling) {
-        return;
-      }
       isCompiling = true;
 
       try {
@@ -44,4 +46,4 @@ async function main(): Promise<void> {
   console.log('Watching for changes in packages...');
 }
 
-main().catch(console.trace);
+main();

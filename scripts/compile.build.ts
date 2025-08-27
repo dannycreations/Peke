@@ -1,6 +1,5 @@
 import { execSync } from 'node:child_process';
-import { rmSync } from 'node:fs';
-import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { snakeCase } from 'es-toolkit';
@@ -116,15 +115,15 @@ export async function main(packageName?: string): Promise<void> {
     await writeFile(outFile, userScript.trim(), 'utf8');
     console.log(`Success: ${finalFile}`);
   }
-
-  console.log('All builds successfully.');
 }
 
 const currentFile = posix.resolve(fileURLToPath(import.meta.url));
 const entryFile = posix.resolve(process.argv[1]);
 
 if (currentFile === entryFile) {
-  rmSync(OUTPUT_DIR, { recursive: true, force: true });
-
-  main().catch(console.trace);
+  (async function () {
+    await rm(OUTPUT_DIR, { force: true, recursive: true });
+    await main();
+    console.log('All builds successfully.');
+  })();
 }

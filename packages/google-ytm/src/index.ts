@@ -1,4 +1,4 @@
-import { setAutorun } from '@/helpers/autorun';
+import { runOnComplete } from '@/helpers/autorun';
 import { debounce } from 'es-toolkit';
 
 interface PlaylistState {
@@ -129,4 +129,4 @@ function main(): void {
   });
 }
 
-setAutorun('complete', main);
+runOnComplete(main);

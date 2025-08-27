@@ -24,7 +24,7 @@
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.6",
-    "@ianvs/prettier-plugin-sort-imports": "^4.6.2",
+    "@ianvs/prettier-plugin-sort-imports": "^4.6.3",
     "@types/node": "22.17.2",
     "chokidar": "^4.0.3",
     "husky": "^9.1.7",

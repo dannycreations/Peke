@@ -1,3 +1,5 @@
+import { runOnImmediate } from '@/helpers/autorun';
+
 interface SpoofConfig {
   readonly target: object;
   readonly key: string;
@@ -255,7 +257,7 @@ class ActivitySpoofer {
   }
 }
 
-new ActivitySpoofer();
+runOnImmediate(() => new ActivitySpoofer());
 
 declare global {
   interface Window {

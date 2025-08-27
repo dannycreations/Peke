@@ -9,7 +9,7 @@ export const ActionType = {
 } as const;
 
 export const DEFAULT_CONFIG: Config = {
-  visible: true,
+  visible: false,
   cycleDelay: 1000,
   position: {
     left: 10,

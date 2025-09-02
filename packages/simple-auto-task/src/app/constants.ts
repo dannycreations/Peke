@@ -3,6 +3,8 @@ import type { Config } from './types';
 export const STORAGE_CONFIG_KEY = 'sat_config';
 export const STORAGE_AUTORUN_KEY = 'sat_autorun';
 
+export const PANEL_SPACING = 10;
+
 export const ActionType = {
   CLICK: 'CLICK',
   DELETE: 'DELETE',

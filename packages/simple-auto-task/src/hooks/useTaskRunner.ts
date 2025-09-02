@@ -44,11 +44,7 @@ export const useTaskRunner = ({ cycleDelay, stepDelay, waitDelay, onTimeout }: U
         element[0].scrollIntoView({
           block: 'center',
         });
-        element[0].dispatchEvent(
-          new MouseEvent('click', {
-            bubbles: true,
-          }),
-        );
+        element.trigger('click');
         break;
       }
       case ActionTypeConst.DELETE: {

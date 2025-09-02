@@ -1,3 +1,4 @@
+import $ from 'jquery';
 import { ChangeEvent, FC, memo, MouseEvent, useCallback, useEffect, useMemo, useRef } from 'react';
 
 import { MainPanel } from '../components/MainPanel';
@@ -7,7 +8,7 @@ import { useElementPicker } from '../hooks/useElementPicker';
 import { usePanelDrag } from '../hooks/usePanelDrag';
 import { useTaskRunner } from '../hooks/useTaskRunner';
 import { useAppStore } from '../stores/appStore';
-import { ActionType as ActionTypeConst, DEFAULT_CONFIG, StatusState as StatusStateConst, STORAGE_AUTORUN_KEY } from './constants';
+import { ActionType as ActionTypeConst, DEFAULT_CONFIG, PANEL_SPACING, StatusState as StatusStateConst, STORAGE_AUTORUN_KEY } from './constants';
 
 import type { Rule } from './types';
 
@@ -83,9 +84,15 @@ export const App: FC = memo(() => {
     return editingRuleId !== null ? selectorList.find((r) => r.id === editingRuleId) || null : null;
   }, [editingRuleId, selectorList]);
 
+  const editingRuleIndex = useMemo(
+    () => (editingRuleId !== null ? selectorList.findIndex((r) => r.id === editingRuleId) : -1),
+    [editingRuleId, selectorList],
+  );
+
   const handleAddSelector = useCallback(() => {
     const newSelector = selectorInputRef.current?.value.trim();
     if (!newSelector) {
+      selectorInputRef.current?.focus();
       return;
     }
 
@@ -98,6 +105,7 @@ export const App: FC = memo(() => {
     });
     if (selectorInputRef.current) {
       selectorInputRef.current.value = '';
+      selectorInputRef.current.focus();
     }
   }, [addRule]);
 
@@ -143,7 +151,7 @@ export const App: FC = memo(() => {
             if (rulesPanelRef.current && panelContainerRef.current) {
               const userPanelRect = panelContainerRef.current.getBoundingClientRect();
               rulesPanelRef.current.style.top = `${userPanelRect.top}px`;
-              rulesPanelRef.current.style.left = `${userPanelRect.left + userPanelRect.width + 10}px`;
+              rulesPanelRef.current.style.left = `${userPanelRect.left + userPanelRect.width + PANEL_SPACING}px`;
               rulesPanelRef.current.style.right = 'auto';
               rulesPanelRef.current.style.display = 'block';
             }
@@ -166,12 +174,19 @@ export const App: FC = memo(() => {
     if (!inputEl) {
       return;
     }
-    inputEl.classList.remove('sat-input-error');
+    inputEl.classList.remove('sat-input-error', 'sat-input-success');
 
     const showError = () => {
       inputEl.classList.add('sat-input-error');
       setTimeout(() => {
         inputEl.classList.remove('sat-input-error');
+      }, 1500);
+    };
+
+    const showSuccess = () => {
+      inputEl.classList.add('sat-input-success');
+      setTimeout(() => {
+        inputEl.classList.remove('sat-input-success');
       }, 1500);
     };
 
@@ -183,8 +198,12 @@ export const App: FC = memo(() => {
     try {
       const element = $(selector);
       if (element.length > 0) {
-        element[0].style.outline = '2px solid red';
-        setTimeout(() => (element[0].style.outline = ''), 800);
+        showSuccess();
+        element.each((_, el) => {
+          const originalOutline = el.style.outline;
+          el.style.outline = '2px solid #22c55e';
+          setTimeout(() => (el.style.outline = originalOutline), 1500);
+        });
       } else {
         showError();
       }
@@ -207,6 +226,7 @@ export const App: FC = memo(() => {
 
   const handleStart = useCallback(() => {
     startRunner();
+    localStorage.setItem(STORAGE_AUTORUN_KEY, 'true');
   }, [startRunner]);
 
   const handleStop = useCallback(() => {
@@ -312,6 +332,7 @@ export const App: FC = memo(() => {
         />
         <RulesPanel
           editingRule={editingRule}
+          editingRuleIndex={editingRuleIndex}
           onCloseRules={handleCloseRules}
           onSaveRule={handleSaveRule}
           onTestSelector={testSelector}

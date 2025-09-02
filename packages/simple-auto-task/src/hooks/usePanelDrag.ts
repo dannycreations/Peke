@@ -22,17 +22,24 @@ export const usePanelDrag = ({ mainPanelRef, rulesPanelRef, onDragEnd }: UsePane
 
   const handlePanelsDrag = useCallback(
     (draggedElement: HTMLElement, deltaX: number, deltaY: number) => {
-      draggedElement.style.top = `${draggedElement.offsetTop - deltaY}px`;
-      draggedElement.style.left = `${draggedElement.offsetLeft - deltaX}px`;
+      const headerHeight = 30;
+      let newTop = draggedElement.offsetTop - deltaY;
+      let newLeft = draggedElement.offsetLeft - deltaX;
+
+      newTop = Math.max(0, Math.min(newTop, window.innerHeight - headerHeight));
+      newLeft = Math.max(-draggedElement.offsetWidth + headerHeight * 2, Math.min(newLeft, window.innerWidth - headerHeight * 2));
+
+      draggedElement.style.top = `${newTop}px`;
+      draggedElement.style.left = `${newLeft}px`;
       draggedElement.style.right = 'auto';
 
-      if (draggedElement === mainPanelRef.current && rulesPanelRef.current) {
-        rulesPanelRef.current.style.top = `${mainPanelRef.current.offsetTop + initialOffsetY.current}px`;
-        rulesPanelRef.current.style.left = `${mainPanelRef.current.offsetLeft + initialOffsetX.current}px`;
+      if (draggedElement === mainPanelRef.current && rulesPanelRef.current && rulesPanelRef.current.style.display !== 'none') {
+        rulesPanelRef.current.style.top = `${newTop + initialOffsetY.current}px`;
+        rulesPanelRef.current.style.left = `${newLeft + initialOffsetX.current}px`;
         rulesPanelRef.current.style.right = 'auto';
       } else if (draggedElement === rulesPanelRef.current && mainPanelRef.current) {
-        mainPanelRef.current.style.top = `${rulesPanelRef.current.offsetTop - initialOffsetY.current}px`;
-        mainPanelRef.current.style.left = `${rulesPanelRef.current.offsetLeft - initialOffsetX.current}px`;
+        mainPanelRef.current.style.top = `${newTop - initialOffsetY.current}px`;
+        mainPanelRef.current.style.left = `${newLeft - initialOffsetX.current}px`;
         mainPanelRef.current.style.right = 'auto';
       }
     },

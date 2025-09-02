@@ -88,7 +88,12 @@ export const MainPanel = memo<MainPanelProps>(
               placeholder="Click 'Pick' or enter selector"
               style={{ marginBottom: '4px' }}
               type="text"
-              onKeyDown={handleKeyDown}
+              onKeyDown={(e) => {
+                handleKeyDown(e);
+                if (e.key === 'Enter') {
+                  onAddSelector();
+                }
+              }}
             />
             <div className="sat-btn-group">
               <button id="sat-picker-btn" className="sat-panel-button" onClick={onPick}>
@@ -104,36 +109,36 @@ export const MainPanel = memo<MainPanelProps>(
           </label>
 
           <div id="sat-selector-list-display" onClick={onListClick}>
-            {selectorList.map((rule, index) => (
-              <div
-                key={rule.id}
-                className="sat-selector-item"
-                style={{
-                  backgroundColor: highlightedRuleIndex === index ? HIGHLIGHT_BG_COLORS[highlightState] : '',
-                  color: highlightedRuleIndex === index ? HIGHLIGHT_TEXT_COLORS[highlightState] : '',
-                }}
-              >
-                <span className="sat-selector-text" title={rule.selector}>
-                  {index + 1}. {rule.selector}
-                </span>
-                <div className="sat-btn-group">
-                  <button
-                    aria-label={`Configure rule ${index + 1}`}
-                    className="sat-selector-item-btn sat-selector-item-config-btn"
-                    data-rule-id={rule.id}
-                  >
-                    &#9881;
-                  </button>
-                  <button
-                    aria-label={`Remove rule ${index + 1}`}
-                    className="sat-selector-item-btn sat-selector-item-remove-btn"
-                    data-rule-id={rule.id}
-                  >
-                    &times;
-                  </button>
+            {selectorList.length === 0 ? (
+              <div id="sat-no-rules-message">No rules yet. Add one above.</div>
+            ) : (
+              selectorList.map((rule, index) => (
+                <div
+                  key={rule.id}
+                  className="sat-selector-item"
+                  style={{
+                    backgroundColor: highlightedRuleIndex === index ? HIGHLIGHT_BG_COLORS[highlightState] : '',
+                    color: highlightedRuleIndex === index ? HIGHLIGHT_TEXT_COLORS[highlightState] : '',
+                  }}
+                >
+                  <span className="sat-selector-text" title={rule.selector}>
+                    {index + 1}. {rule.selector}
+                  </span>
+                  <div className="sat-btn-group">
+                    <button
+                      className="sat-selector-item-btn sat-selector-item-config-btn"
+                      data-rule-id={rule.id}
+                      title={`Configure rule ${index + 1}`}
+                    >
+                      &#9881;
+                    </button>
+                    <button className="sat-selector-item-btn sat-selector-item-remove-btn" data-rule-id={rule.id} title={`Remove rule ${index + 1}`}>
+                      &times;
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
 
           {delayConfigs.map((config) => (

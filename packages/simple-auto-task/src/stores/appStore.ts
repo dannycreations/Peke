@@ -30,7 +30,7 @@ interface AppActions {
   readonly setHighlightedRuleIndex: (index: number | null) => void;
   readonly setIsPicking: (isPicking: boolean) => void;
   readonly setIsRunning: (isRunning: boolean) => void;
-  readonly setIsAutoRun: (isPending: boolean) => void;
+  readonly setIsAutoRun: (isAutoRun: boolean) => void;
   readonly setLastHoveredElement: (element: Element | null) => void;
   readonly setSelectorList: (selectorList: ReadonlyArray<Rule>) => void;
   readonly setStatus: (status: StatusState) => void;

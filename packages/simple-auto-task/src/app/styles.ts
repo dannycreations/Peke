@@ -7,32 +7,50 @@ export const SAT_GLOBAL_STYLES = `
 `;
 
 export const SAT_APP_STYLES = `
+  :host {
+    --sat-color-primary: #3b82f6;
+    --sat-color-secondary: #8b5cf6;
+    --sat-color-success: #22c55e;
+    --sat-color-warning: #f59e0b;
+    --sat-color-danger: #ef4444;
+    --sat-color-neutral: #6b7280;
+    --sat-color-header-bg: #374151;
+    --sat-color-border: #ccc;
+    --sat-color-border-light: #ddd;
+    --sat-color-body-bg: white;
+    --sat-color-body-text: #1f2937;
+    --sat-color-input-bg: #f9fafb;
+    --sat-color-scrollbar-thumb: #d1d5db;
+    --sat-color-scrollbar-thumb-hover: #9ca3af;
+    --sat-color-button-disabled-bg: #9ca3af;
+  }
+
   * {
     box-sizing: border-box;
   }
 
   #sat-panel-container,
   #sat-rules-panel {
-    background: white;
-    border: 1px solid #ccc;
+    background: var(--sat-color-body-bg);
+    border: 1px solid var(--sat-color-border);
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-    color: #1f2937;
+    color: var(--sat-color-body-text);
     font-family: sans-serif;
     position: fixed;
     width: 300px;
-    z-index: 999999;
+    z-index: 2147483645;
   }
 
   #sat-rules-panel {
-    z-index: 1000000;
+    z-index: 2147483646;
   }
 
   .sat-panel-header {
     align-items: center;
-    background: #374151;
+    background: var(--sat-color-header-bg);
     border-radius: 8px 8px 0 0;
-    color: white;
+    color: var(--sat-color-body-bg);
     cursor: move;
     display: flex;
     font-size: 14px;
@@ -71,11 +89,11 @@ export const SAT_APP_STYLES = `
 
   .sat-panel-input,
   .sat-panel-select {
-    background-color: white;
-    border: 1px solid #ccc;
+    background-color: var(--sat-color-body-bg);
+    border: 1px solid var(--sat-color-border);
     border-radius: 4px;
     box-sizing: border-box;
-    color: #1f2937;
+    color: var(--sat-color-body-text);
     color-scheme: light;
     margin-top: 4px;
     padding: 4px;
@@ -85,60 +103,75 @@ export const SAT_APP_STYLES = `
 
   .sat-panel-input:focus,
   .sat-panel-select:focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 1px #3b82f6;
+    border-color: var(--sat-color-primary);
+    box-shadow: 0 0 0 1px var(--sat-color-primary);
     outline: none;
   }
 
   .sat-panel-input.sat-input-error {
-    border-color: #ef4444;
-    box-shadow: 0 0 0 1px #ef4444;
+    border-color: var(--sat-color-danger);
+    box-shadow: 0 0 0 1px var(--sat-color-danger);
+  }
+
+  .sat-panel-input.sat-input-success {
+    border-color: var(--sat-color-success);
+    box-shadow: 0 0 0 1px var(--sat-color-success);
   }
 
   .sat-panel-button {
     border: none;
     border-radius: 4px;
-    color: white;
+    color: var(--sat-color-body-bg);
     cursor: pointer;
     flex: 1;
     padding: 4px;
+    transition: all 0.15s ease-in-out;
   }
 
-  #sat-picker-btn {
-    background: #8b5cf6;
+  .sat-panel-button:hover:not(:disabled) {
+    filter: brightness(1.1);
   }
 
-  #sat-add-selector-btn {
-    background: #3b82f6;
+  .sat-panel-button:active:not(:disabled) {
+    transform: scale(0.98);
+    filter: brightness(0.95);
   }
 
-  #sat-test-selector-btn {
-    background: #f59e0b;
-  }
-
-  #sat-start-btn {
-    background: #22c55e;
-  }
-
-  #sat-stop-btn {
-    background: #ef4444;
-  }
+  #sat-picker-btn, #sat-rules-pick-btn, #sat-rules-parent-pick-btn, #sat-rules-custom-pick-btn { background: var(--sat-color-secondary); }
+  #sat-add-selector-btn, #sat-rules-panel-save-btn { background: var(--sat-color-primary); }
+  #sat-test-selector-btn, #sat-rules-test-btn, #sat-rules-parent-test-btn, #sat-rules-custom-test-btn { background: var(--sat-color-warning); }
+  #sat-start-btn { background: var(--sat-color-success); }
+  #sat-stop-btn { background: var(--sat-color-danger); }
+  #sat-rules-panel-cancel-btn { background: var(--sat-color-neutral); }
 
   #sat-start-btn:disabled,
   #sat-stop-btn:disabled {
-    background: #9ca3af;
+    background: var(--sat-color-button-disabled-bg);
     cursor: not-allowed;
+    opacity: 0.7;
   }
 
   #sat-selector-list-display {
-    background: #f9fafb;
-    border: 1px solid #ddd;
+    background: var(--sat-color-input-bg);
+    border: 1px solid var(--sat-color-border-light);
     border-radius: 4px;
     font-size: 12px;
-    max-height: 98px;
+    max-height: 150px;
     min-height: 98px;
     overflow-y: auto;
     padding: 4px;
+  }
+
+  #sat-no-rules-message {
+    align-items: center;
+    color: var(--sat-color-neutral);
+    display: flex;
+    font-style: italic;
+    height: 100%;
+    justify-content: center;
+    min-height: 88px;
+    text-align: center;
+    user-select: none;
   }
 
   #sat-selector-list-display::-webkit-scrollbar {
@@ -146,19 +179,19 @@ export const SAT_APP_STYLES = `
   }
 
   #sat-selector-list-display::-webkit-scrollbar-track {
-    background: #f9fafb;
+    background: var(--sat-color-input-bg);
     border-radius: 4px;
   }
 
   #sat-selector-list-display::-webkit-scrollbar-thumb {
     background-clip: padding-box;
-    background-color: #d1d5db;
-    border: 2px solid #f9fafb;
+    background-color: var(--sat-color-scrollbar-thumb);
+    border: 2px solid var(--sat-color-input-bg);
     border-radius: 4px;
   }
 
   #sat-selector-list-display::-webkit-scrollbar-thumb:hover {
-    background-color: #9ca3af;
+    background-color: var(--sat-color-scrollbar-thumb-hover);
   }
 
   .sat-selector-item {
@@ -181,11 +214,11 @@ export const SAT_APP_STYLES = `
   }
 
   .sat-selector-item-config-btn {
-    color: #6b7280;
+    color: var(--sat-color-neutral);
   }
 
   .sat-selector-item-remove-btn {
-    color: #ef4444;
+    color: var(--sat-color-danger);
   }
 
   .sat-selector-text {
@@ -200,6 +233,20 @@ export const SAT_APP_STYLES = `
   .sat-btn-group {
     display: flex;
     gap: 4px;
+  }
+
+  .sat-input-with-btn {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+  }
+
+  .sat-input-with-btn .sat-panel-input {
+    margin-top: 0;
+  }
+
+  .sat-input-with-btn .sat-panel-button {
+    flex: 0 1 auto;
   }
 
   #sat-panel-container.sat-picking-mode-panel,
@@ -227,7 +274,7 @@ export const SAT_APP_STYLES = `
   }
 
   .sat-switch-slider {
-    background-color: #ccc;
+    background-color: var(--sat-color-border);
     border-radius: 20px;
     bottom: 0;
     cursor: pointer;
@@ -240,7 +287,7 @@ export const SAT_APP_STYLES = `
   }
 
   .sat-switch-slider:before {
-    background-color: white;
+    background-color: var(--sat-color-body-bg);
     border-radius: 50%;
     bottom: 4px;
     content: '';
@@ -253,11 +300,11 @@ export const SAT_APP_STYLES = `
   }
 
   input:checked + .sat-switch-slider {
-    background-color: #3b82f6;
+    background-color: var(--sat-color-primary);
   }
 
   input:focus + .sat-switch-slider {
-    box-shadow: 0 0 1px #3b82f6;
+    box-shadow: 0 0 1px var(--sat-color-primary);
   }
 
   input:checked + .sat-switch-slider:before {
@@ -267,7 +314,10 @@ export const SAT_APP_STYLES = `
   }
 
   #sat-picker-clue {
-    background-color: rgba(0, 0, 0, 0.8);
+    background-color: rgba(17, 24, 39, 0.9);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border: 1px solid rgba(55, 65, 81, 0.5);
     border-radius: 8px;
     bottom: 20px;
     color: white;
@@ -278,6 +328,6 @@ export const SAT_APP_STYLES = `
     pointer-events: none;
     position: fixed;
     transform: translateX(-50%);
-    z-index: 9999999;
+    z-index: 2147483647;
   }
 `;

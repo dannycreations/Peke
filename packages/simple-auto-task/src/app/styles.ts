@@ -125,7 +125,7 @@ export const SAT_APP_STYLES = `
     cursor: pointer;
     flex: 1;
     padding: 4px;
-    transition: all 0.15s ease-in-out;
+    transition: background-color 0.15s ease-in-out, opacity 0.15s ease-in-out, filter 0.15s ease-in-out, transform 0.15s ease-in-out;
   }
 
   .sat-panel-button:hover:not(:disabled) {

@@ -34,9 +34,13 @@ export const useElementPicker = ({ panelContainerRef, rulesPanelRef }: UseElemen
     }
 
     let isPaused: boolean = false;
+    let lastClientX = 0;
+    let lastClientY = 0;
 
-    const handlePickingHover = (event: MouseEvent): void => {
-      const target = event.composedPath()[0] as Element;
+    const highlightElement = (target: Element | null): void => {
+      if (!target) {
+        return;
+      }
 
       if (panelContainerRef.current?.contains(target) || rulesPanelRef.current?.contains(target)) {
         const { lastHoveredElement } = useAppStore.getState();
@@ -44,10 +48,6 @@ export const useElementPicker = ({ panelContainerRef, rulesPanelRef }: UseElemen
           lastHoveredElement.classList.remove('sat-highlight-pick');
           setLastHoveredElement(null);
         }
-        return;
-      }
-
-      if (isPaused) {
         return;
       }
 
@@ -64,6 +64,17 @@ export const useElementPicker = ({ panelContainerRef, rulesPanelRef }: UseElemen
         target.classList.add('sat-highlight-pick');
         setLastHoveredElement(target);
       }
+    };
+
+    const handlePickingHover = (event: MouseEvent): void => {
+      lastClientX = event.clientX;
+      lastClientY = event.clientY;
+
+      if (isPaused) {
+        return;
+      }
+      const target = event.composedPath()[0] as Element;
+      highlightElement(target);
     };
 
     const handlePickingClick = (event: MouseEvent): void => {
@@ -101,6 +112,8 @@ export const useElementPicker = ({ panelContainerRef, rulesPanelRef }: UseElemen
         } else if (event.type === 'keyup' && isPaused) {
           isPaused = false;
           document.body.style.cursor = 'crosshair';
+          const target = document.elementFromPoint(lastClientX, lastClientY);
+          highlightElement(target);
         }
       }
     };

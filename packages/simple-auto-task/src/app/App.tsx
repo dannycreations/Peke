@@ -1,5 +1,5 @@
 import $ from 'jquery';
-import { ChangeEvent, FC, memo, MouseEvent, useCallback, useEffect, useMemo, useRef } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
 
 import { MainPanel } from '../components/MainPanel';
 import { RulesPanel } from '../components/RulesPanel';
@@ -8,11 +8,12 @@ import { useElementPicker } from '../hooks/useElementPicker';
 import { usePanelDrag } from '../hooks/usePanelDrag';
 import { useTaskRunner } from '../hooks/useTaskRunner';
 import { useAppStore } from '../stores/appStore';
-import { ActionType as ActionTypeConst, DEFAULT_CONFIG, PANEL_SPACING, StatusState as StatusStateConst, STORAGE_AUTORUN_KEY } from './constants';
+import { ActionType, DEFAULT_CONFIG, PANEL_SPACING, StatusState, STORAGE_AUTORUN_KEY } from './constants';
 
+import type { ChangeEvent, MouseEvent } from 'react';
 import type { Rule } from './types';
 
-const PickerClue: FC = memo(() => {
+const PickerClue = memo(() => {
   return (
     <div id="sat-picker-clue">
       Click to select an element. Hold <strong>Ctrl</strong> to pause. Press <strong>Esc</strong> to cancel.
@@ -20,7 +21,7 @@ const PickerClue: FC = memo(() => {
   );
 });
 
-export const App: FC = memo(() => {
+export const App = memo(() => {
   const addRule = useAppStore((s) => s.addRule);
   const editingRuleId = useAppStore((s) => s.editingRuleId);
   const highlightState = useAppStore((s) => s.highlightState);
@@ -97,7 +98,7 @@ export const App: FC = memo(() => {
     }
 
     addRule({
-      action: ActionTypeConst.CLICK,
+      action: ActionType.CLICK,
       options: {
         ignoreWait: false,
       },
@@ -140,6 +141,9 @@ export const App: FC = memo(() => {
       }
 
       if (target.classList.contains('sat-selector-item-remove-btn')) {
+        if (editingRuleId === ruleId) {
+          handleCloseRules();
+        }
         removeRule(ruleId);
       } else if (target.classList.contains('sat-selector-item-config-btn')) {
         if (editingRuleId === ruleId) {
@@ -196,7 +200,7 @@ export const App: FC = memo(() => {
     }
 
     try {
-      const element = $(selector);
+      const element = $(selector).first();
       if (element.length > 0) {
         showSuccess();
         element.each((_, el) => {
@@ -232,7 +236,7 @@ export const App: FC = memo(() => {
   const handleStop = useCallback(() => {
     stopRunner();
     setIsAutoRun(false);
-    setStatus(StatusStateConst.STOPPED);
+    setStatus(StatusState.STOPPED);
     localStorage.setItem(STORAGE_AUTORUN_KEY, 'false');
   }, [stopRunner, setIsAutoRun, setStatus]);
 
@@ -248,7 +252,7 @@ export const App: FC = memo(() => {
     }
 
     setIsAutoRun(true);
-    setStatus(StatusStateConst.WAITING);
+    setStatus(StatusState.WAITING);
 
     const startWhenReady = () => {
       const isAutoRun = useAppStore.getState().isAutoRun;

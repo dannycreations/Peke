@@ -2,7 +2,7 @@ import { delay } from 'es-toolkit';
 import $ from 'jquery';
 import { useCallback, useEffect, useRef } from 'react';
 
-import { ActionType as ActionTypeConst, HighlightState as HighlightStateConst, StatusState as StatusStateConst } from '../app/constants';
+import { ActionType, HighlightState, StatusState, STORAGE_AUTORUN_KEY } from '../app/constants';
 import { useAppStore } from '../stores/appStore';
 
 import type { Config, Rule } from '../app/types';
@@ -26,6 +26,7 @@ export const useTaskRunner = ({ cycleDelay, stepDelay, waitDelay, onTimeout }: U
   const setHighlightedRuleIndex = useAppStore((state) => state.setHighlightedRuleIndex);
   const setIsRunning = useAppStore((state) => state.setIsRunning);
   const setStatus = useAppStore((state) => state.setStatus);
+  const setIsAutoRun = useAppStore((state) => state.setIsAutoRun);
 
   const delaysRef = useRef<Pick<Config, 'stepDelay' | 'waitDelay' | 'cycleDelay'>>({ stepDelay, waitDelay, cycleDelay });
 
@@ -33,35 +34,46 @@ export const useTaskRunner = ({ cycleDelay, stepDelay, waitDelay, onTimeout }: U
     delaysRef.current = { stepDelay, waitDelay, cycleDelay };
   }, [stepDelay, waitDelay, cycleDelay]);
 
-  const executeRuleAction = useCallback((rule: Rule) => {
-    const element = $(rule.selector);
-    if (element.length === 0) {
-      return;
-    }
+  const executeRuleAction = useCallback(
+    (rule: Rule) => {
+      if (rule.action === ActionType.STOP) {
+        setIsRunning(false);
+        setIsAutoRun(false);
+        setStatus(StatusState.STOPPED);
+        localStorage.setItem(STORAGE_AUTORUN_KEY, 'false');
+        return;
+      }
 
-    switch (rule.action) {
-      case ActionTypeConst.CLICK: {
-        element[0].scrollIntoView({
-          block: 'center',
-        });
-        element.trigger('click');
-        break;
+      const element = $(rule.selector).first();
+      if (element.length === 0) {
+        return;
       }
-      case ActionTypeConst.DELETE: {
-        const { customDeleteSelector, deleteActionType, parentSelector } = rule.options;
-        if (deleteActionType === 'self') {
-          element.remove();
-        } else if (deleteActionType === 'parent' && parentSelector) {
-          element.closest(parentSelector)?.remove();
-        } else if (deleteActionType === 'custom' && customDeleteSelector) {
-          $(customDeleteSelector).each((_: number, el: HTMLElement) => {
-            $(el).remove();
+
+      switch (rule.action) {
+        case ActionType.CLICK: {
+          element[0].scrollIntoView({
+            block: 'center',
           });
+          element.trigger('click');
+          break;
         }
-        break;
+        case ActionType.DELETE: {
+          const { customSelector, deleteActionType, parentSelector } = rule.options;
+          if (deleteActionType === 'self') {
+            element.remove();
+          } else if (deleteActionType === 'parent' && parentSelector) {
+            element.closest(parentSelector)?.remove();
+          } else if (deleteActionType === 'custom' && customSelector) {
+            $(customSelector).each((_: number, el: HTMLElement) => {
+              $(el).remove();
+            });
+          }
+          break;
+        }
       }
-    }
-  }, []);
+    },
+    [setIsAutoRun, setIsRunning, setStatus],
+  );
 
   const waitForElement = useCallback(async (rule: Rule, timeoutMs: number): Promise<boolean> => {
     if ($(rule.selector).length > 0) {
@@ -101,7 +113,7 @@ export const useTaskRunner = ({ cycleDelay, stepDelay, waitDelay, onTimeout }: U
         }
 
         setHighlightedRuleIndex(index);
-        setHighlightState(HighlightStateConst.WAITING);
+        setHighlightState(HighlightState.WAITING);
 
         const timeoutMs: number = delaysRef.current.waitDelay;
         const elementFound: boolean = await waitForElement(rule, timeoutMs);
@@ -112,7 +124,7 @@ export const useTaskRunner = ({ cycleDelay, stepDelay, waitDelay, onTimeout }: U
 
         if (elementFound) {
           executeRuleAction(rule);
-          setHighlightState(HighlightStateConst.SUCCESS);
+          setHighlightState(HighlightState.SUCCESS);
         } else if (!rule.options.ignoreWait) {
           onTimeout();
           return;
@@ -122,7 +134,7 @@ export const useTaskRunner = ({ cycleDelay, stepDelay, waitDelay, onTimeout }: U
           await delay(delaysRef.current.stepDelay);
         }
 
-        setHighlightState(HighlightStateConst.IDLE);
+        setHighlightState(HighlightState.IDLE);
         setHighlightedRuleIndex(null);
       }
 
@@ -138,7 +150,7 @@ export const useTaskRunner = ({ cycleDelay, stepDelay, waitDelay, onTimeout }: U
     }
 
     setIsRunning(true);
-    setStatus(StatusStateConst.RUNNING);
+    setStatus(StatusState.RUNNING);
   }, [isRunning, selectorList.length, setIsRunning, setStatus]);
 
   const stop = useCallback(() => {
@@ -147,7 +159,7 @@ export const useTaskRunner = ({ cycleDelay, stepDelay, waitDelay, onTimeout }: U
     }
 
     setIsRunning(false);
-    setStatus(StatusStateConst.STOPPED);
+    setStatus(StatusState.STOPPED);
   }, [isRunning, setIsRunning, setStatus]);
 
   useEffect(() => {

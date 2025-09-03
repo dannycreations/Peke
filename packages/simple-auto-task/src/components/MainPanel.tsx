@@ -1,7 +1,8 @@
-import { ChangeEvent, KeyboardEvent, memo, MouseEvent, RefObject, useMemo } from 'react';
+import { memo, useEffect, useRef } from 'react';
 
 import { HIGHLIGHT_BG_COLORS, HIGHLIGHT_TEXT_COLORS, STATUS_COLORS, STATUS_TEXTS } from '../app/constants';
 
+import type { ChangeEvent, KeyboardEvent, MouseEvent, RefObject } from 'react';
 import type { HighlightState, Rule, StatusState } from '../app/types';
 
 interface MainPanelProps {
@@ -25,14 +26,14 @@ interface MainPanelProps {
   readonly waitDelay: number;
 }
 
-type DelayConfig = {
+interface DelayConfig {
   readonly id: string;
   readonly name: 'stepDelay' | 'waitDelay' | 'cycleDelay';
   readonly label: string;
   readonly min: number;
   readonly step: number;
   readonly value: number;
-};
+}
 
 const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
   event.stopPropagation();
@@ -59,14 +60,22 @@ export const MainPanel = memo<MainPanelProps>(
     stepDelay,
     waitDelay,
   }) => {
-    const delayConfigs: ReadonlyArray<DelayConfig> = useMemo(
-      () => [
-        { id: 'step-delay', name: 'stepDelay', label: 'Step Delay (ms)', min: 0, step: 10, value: stepDelay },
-        { id: 'wait-delay', name: 'waitDelay', label: 'Wait Delay (ms)', min: 1000, step: 100, value: waitDelay },
-        { id: 'cycle-delay', name: 'cycleDelay', label: 'Cycle Delay (ms)', min: 100, step: 100, value: cycleDelay },
-      ],
-      [stepDelay, waitDelay, cycleDelay],
-    );
+    const listDisplayRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+      if (isRunning && highlightedRuleIndex !== null && listDisplayRef.current) {
+        const itemElement = listDisplayRef.current.children[highlightedRuleIndex] as HTMLElement;
+        if (itemElement) {
+          itemElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+      }
+    }, [isRunning, highlightedRuleIndex]);
+
+    const delayConfigs: ReadonlyArray<DelayConfig> = [
+      { id: 'step-delay', name: 'stepDelay', label: 'Step Delay (ms)', min: 0, step: 10, value: stepDelay },
+      { id: 'wait-delay', name: 'waitDelay', label: 'Wait Delay (ms)', min: 1000, step: 100, value: waitDelay },
+      { id: 'cycle-delay', name: 'cycleDelay', label: 'Cycle Delay (ms)', min: 100, step: 100, value: cycleDelay },
+    ];
 
     return (
       <div id="sat-panel-container" ref={ref}>
@@ -108,7 +117,7 @@ export const MainPanel = memo<MainPanelProps>(
             </div>
           </label>
 
-          <div id="sat-selector-list-display" onClick={onListClick}>
+          <div id="sat-selector-list-display" ref={listDisplayRef} onClick={onListClick}>
             {selectorList.length === 0 ? (
               <div id="sat-no-rules-message">No rules yet. Add one above.</div>
             ) : (

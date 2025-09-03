@@ -1,5 +1,7 @@
 import { noop } from 'es-toolkit';
-import { RefObject, useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
+
+import type { RefObject } from 'react';
 
 interface UsePanelDragProps {
   readonly mainPanelRef: RefObject<HTMLDivElement | null>;

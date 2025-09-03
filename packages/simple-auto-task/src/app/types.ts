@@ -1,4 +1,4 @@
-export type ActionType = 'CLICK' | 'DELETE';
+export type ActionType = 'CLICK' | 'DELETE' | 'STOP';
 
 export interface Config {
   readonly visible: boolean;
@@ -22,15 +22,15 @@ export interface Position {
 }
 
 export interface Rule {
-  readonly action: ActionType;
   readonly id: number;
-  readonly options: RuleOptions;
+  readonly action: ActionType;
   readonly selector: string;
+  readonly options: RuleOptions;
 }
 
 export interface RuleOptions {
-  readonly customDeleteSelector?: string;
-  readonly deleteActionType?: DeleteActionType;
   readonly ignoreWait: boolean;
+  readonly deleteActionType?: DeleteActionType;
   readonly parentSelector?: string;
+  readonly customSelector?: string;
 }

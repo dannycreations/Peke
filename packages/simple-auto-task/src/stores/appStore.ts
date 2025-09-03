@@ -8,9 +8,9 @@ interface AppState {
   readonly editingRuleId: number | null;
   readonly highlightState: HighlightState;
   readonly highlightedRuleIndex: number | null;
+  readonly isAutoRun: boolean;
   readonly isPicking: boolean;
   readonly isRunning: boolean;
-  readonly isAutoRun: boolean;
   readonly lastHoveredElement: Element | null;
   readonly selectorList: ReadonlyArray<Rule>;
   readonly status: StatusState;
@@ -28,9 +28,9 @@ interface AppActions {
   readonly setEditingRuleId: (id: number | null) => void;
   readonly setHighlightState: (state: HighlightState) => void;
   readonly setHighlightedRuleIndex: (index: number | null) => void;
+  readonly setIsAutoRun: (isAutoRun: boolean) => void;
   readonly setIsPicking: (isPicking: boolean) => void;
   readonly setIsRunning: (isRunning: boolean) => void;
-  readonly setIsAutoRun: (isAutoRun: boolean) => void;
   readonly setLastHoveredElement: (element: Element | null) => void;
   readonly setSelectorList: (selectorList: ReadonlyArray<Rule>) => void;
   readonly setStatus: (status: StatusState) => void;
@@ -41,9 +41,9 @@ const initialState: AppState = {
   editingRuleId: null,
   highlightState: HighlightStateConst.IDLE,
   highlightedRuleIndex: null,
+  isAutoRun: false,
   isPicking: false,
   isRunning: false,
-  isAutoRun: false,
   lastHoveredElement: null,
   selectorList: [],
   status: StatusStateConst.IDLE,
@@ -52,56 +52,56 @@ const initialState: AppState = {
 export const useAppStore = create<AppState & AppActions>((set) => ({
   ...initialState,
 
-  addRule: (newRuleData: AddRulePayload) => {
-    set((state: AppState) => ({
+  addRule: (newRuleData) => {
+    set((state) => ({
       selectorList: [...state.selectorList, { ...newRuleData, id: Date.now() }],
     }));
   },
 
-  removeRule: (idToRemove: number) => {
-    set((state: AppState) => ({
+  removeRule: (idToRemove) => {
+    set((state) => ({
       selectorList: state.selectorList.filter((rule) => rule.id !== idToRemove),
     }));
   },
 
-  setEditingRuleId: (id: number | null) => {
+  setEditingRuleId: (id) => {
     set({ editingRuleId: id });
   },
 
-  setHighlightState: (state: HighlightState) => {
+  setHighlightState: (state) => {
     set({ highlightState: state });
   },
 
-  setHighlightedRuleIndex: (index: number | null) => {
+  setHighlightedRuleIndex: (index) => {
     set({ highlightedRuleIndex: index });
   },
 
-  setIsPicking: (isPicking: boolean) => {
-    set({ isPicking });
-  },
-
-  setIsRunning: (isRunning: boolean) => {
-    set({ isRunning });
-  },
-
-  setIsAutoRun: (isAutoRun: boolean) => {
+  setIsAutoRun: (isAutoRun) => {
     set({ isAutoRun });
   },
 
-  setLastHoveredElement: (element: Element | null) => {
+  setIsPicking: (isPicking) => {
+    set({ isPicking });
+  },
+
+  setIsRunning: (isRunning) => {
+    set({ isRunning });
+  },
+
+  setLastHoveredElement: (element) => {
     set({ lastHoveredElement: element });
   },
 
-  setSelectorList: (selectorList: ReadonlyArray<Rule>) => {
+  setSelectorList: (selectorList) => {
     set({ selectorList });
   },
 
-  setStatus: (status: StatusState) => {
+  setStatus: (status) => {
     set({ status });
   },
 
-  updateRule: (updatedRule: Rule) => {
-    set((state: AppState) => ({
+  updateRule: (updatedRule) => {
+    set((state) => ({
       selectorList: state.selectorList.map((rule) => (rule.id === updatedRule.id ? updatedRule : rule)),
     }));
   },

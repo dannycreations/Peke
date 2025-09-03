@@ -1,9 +1,11 @@
 import { StrictMode } from 'react';
-import { createRoot, Root } from 'react-dom/client';
+import { createRoot } from 'react-dom/client';
 
 import { App } from './app/App';
 import { STORAGE_AUTORUN_KEY, STORAGE_CONFIG_KEY } from './app/constants';
 import { SAT_APP_STYLES, SAT_GLOBAL_STYLES } from './app/styles';
+
+import type { Root } from 'react-dom/client';
 
 const ROOT_ELEMENT_ID = 'sat-root';
 let reactRoot: Root | null = null;

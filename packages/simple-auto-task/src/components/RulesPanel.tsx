@@ -1,7 +1,8 @@
-import { KeyboardEvent, memo, RefObject, useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 
 import { ActionType as ActionTypeConst } from '../app/constants';
 
+import type { KeyboardEvent, RefObject } from 'react';
 import type { ActionType, DeleteActionType, Rule, RuleOptions } from '../app/types';
 
 interface RulesPanelProps {
@@ -21,7 +22,7 @@ const handleKeyDown = (event: KeyboardEvent<HTMLInputElement | HTMLSelectElement
 export const RulesPanel = memo<RulesPanelProps>(
   ({ editingRule, editingRuleIndex, onCloseRules, onSaveRule, onTestSelector, rulesPanelRef, startPicking }) => {
     const [action, setAction] = useState<ActionType>(ActionTypeConst.CLICK);
-    const [customDeleteSelector, setCustomDeleteSelector] = useState<string>('');
+    const [customSelector, setcustomSelector] = useState<string>('');
     const [deleteActionType, setDeleteActionType] = useState<DeleteActionType>('self');
     const [ignoreWait, setIgnoreWait] = useState<boolean>(false);
     const [parentSelector, setParentSelector] = useState<string>('');
@@ -29,12 +30,12 @@ export const RulesPanel = memo<RulesPanelProps>(
 
     const selectorInputRef = useRef<HTMLInputElement | null>(null);
     const parentSelectorInputRef = useRef<HTMLInputElement | null>(null);
-    const customDeleteSelectorInputRef = useRef<HTMLInputElement | null>(null);
+    const customSelectorInputRef = useRef<HTMLInputElement | null>(null);
 
     useEffect(() => {
       if (editingRule) {
         setAction(editingRule.action);
-        setCustomDeleteSelector(editingRule.options.customDeleteSelector || '');
+        setcustomSelector(editingRule.options.customSelector || '');
         setDeleteActionType(editingRule.options.deleteActionType || 'self');
         setIgnoreWait(editingRule.options.ignoreWait || false);
         setParentSelector(editingRule.options.parentSelector || '');
@@ -54,9 +55,9 @@ export const RulesPanel = memo<RulesPanelProps>(
       });
     }, [startPicking]);
 
-    const handlePickCustomDeleteSelector = useCallback(() => {
+    const handlePickcustomSelector = useCallback(() => {
       startPicking((newSelector: string) => {
-        setCustomDeleteSelector(newSelector);
+        setcustomSelector(newSelector);
       });
     }, [startPicking]);
 
@@ -66,9 +67,9 @@ export const RulesPanel = memo<RulesPanelProps>(
       }
 
       const {
-        customDeleteSelector: _customDeleteSelector,
         deleteActionType: _deleteActionType,
         parentSelector: _parentSelector,
+        customSelector: _customSelector,
         ...baseOptions
       } = editingRule.options;
 
@@ -85,19 +86,19 @@ export const RulesPanel = memo<RulesPanelProps>(
         if (deleteActionType === 'parent') {
           updatedOptions = { ...updatedOptions, parentSelector };
         } else if (deleteActionType === 'custom') {
-          updatedOptions = { ...updatedOptions, customDeleteSelector };
+          updatedOptions = { ...updatedOptions, customSelector };
         }
       }
 
       const updatedRule: Rule = {
-        action,
         id: editingRule.id,
-        options: updatedOptions,
+        action,
         selector,
+        options: updatedOptions,
       };
 
       onSaveRule(updatedRule);
-    }, [action, customDeleteSelector, deleteActionType, editingRule, ignoreWait, onSaveRule, parentSelector, selector]);
+    }, [action, customSelector, deleteActionType, editingRule, ignoreWait, onSaveRule, parentSelector, selector]);
 
     const handleTest = useCallback(() => {
       onTestSelector(selector, selectorInputRef.current);
@@ -145,6 +146,7 @@ export const RulesPanel = memo<RulesPanelProps>(
             >
               <option value={ActionTypeConst.CLICK}>Click Element</option>
               <option value={ActionTypeConst.DELETE}>Delete Element(s)</option>
+              <option value={ActionTypeConst.STOP}>Stop Task</option>
             </select>
           </label>
 
@@ -202,14 +204,14 @@ export const RulesPanel = memo<RulesPanelProps>(
                 <label id="sat-rules-panel-custom-label" className="sat-panel-label">
                   Custom Selector
                   <input
-                    ref={customDeleteSelectorInputRef}
+                    ref={customSelectorInputRef}
                     id="sat-rules-custom-input"
                     className="sat-panel-input"
                     style={{ marginBottom: '4px' }}
                     type="text"
-                    value={customDeleteSelector}
+                    value={customSelector}
                     placeholder="e.g., .ad-banner"
-                    onChange={(e) => setCustomDeleteSelector(e.target.value)}
+                    onChange={(e) => setcustomSelector(e.target.value)}
                     onKeyDown={handleKeyDown}
                   />
                   <div className="sat-btn-group">
@@ -217,7 +219,7 @@ export const RulesPanel = memo<RulesPanelProps>(
                       id="sat-rules-custom-pick-btn"
                       className="sat-panel-button"
                       title="Pick Custom Element"
-                      onClick={handlePickCustomDeleteSelector}
+                      onClick={handlePickcustomSelector}
                     >
                       Pick
                     </button>
@@ -225,7 +227,7 @@ export const RulesPanel = memo<RulesPanelProps>(
                       id="sat-rules-custom-test-btn"
                       className="sat-panel-button"
                       title="Test Custom Selector"
-                      onClick={() => onTestSelector(customDeleteSelector, customDeleteSelectorInputRef.current)}
+                      onClick={() => onTestSelector(customSelector, customSelectorInputRef.current)}
                     >
                       Test
                     </button>

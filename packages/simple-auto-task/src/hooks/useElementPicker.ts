@@ -1,7 +1,9 @@
-import { RefObject, useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 import { useAppStore } from '../stores/appStore';
 import { generateSelector } from '../utils/utils';
+
+import type { RefObject } from 'react';
 
 interface UseElementPickerProps {
   readonly panelContainerRef: RefObject<HTMLDivElement | null>;

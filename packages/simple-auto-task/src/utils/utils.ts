@@ -1,13 +1,16 @@
 export function generateSelector(el: Element): string {
   const path: string[] = [];
-  while (el && el.nodeType === Node.ELEMENT_NODE) {
-    let selector: string = el.tagName.toLowerCase();
-    if (el.id) {
-      selector += `#${CSS.escape(el.id)}`;
+  let currentEl: Element | null = el;
+
+  while (currentEl && currentEl.nodeType === Node.ELEMENT_NODE) {
+    let selector: string = currentEl.tagName.toLowerCase();
+
+    if (currentEl.id) {
+      selector += `#${CSS.escape(currentEl.id)}`;
       path.unshift(selector);
       break;
     } else {
-      let sibling: Element | null = el;
+      let sibling: Element | null = currentEl;
       let nth = 1;
       while ((sibling = sibling.previousElementSibling) !== null) {
         if (sibling.tagName.toLowerCase() === selector) {
@@ -18,8 +21,10 @@ export function generateSelector(el: Element): string {
         selector += `:nth-of-type(${nth})`;
       }
     }
+
     path.unshift(selector);
-    el = el.parentElement!;
+    currentEl = currentEl.parentElement;
   }
+
   return path.join(' > ');
 }

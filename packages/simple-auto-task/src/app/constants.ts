@@ -8,6 +8,7 @@ export const PANEL_SPACING = 10;
 export const ActionType = {
   CLICK: 'CLICK',
   DELETE: 'DELETE',
+  STOP: 'STOP',
 } as const;
 
 export const DEFAULT_CONFIG: Config = {

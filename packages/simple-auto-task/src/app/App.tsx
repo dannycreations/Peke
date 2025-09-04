@@ -15,7 +15,7 @@ import type { Rule } from './types';
 
 const PickerClue = memo(() => {
   return (
-    <div id="sat-picker-clue">
+    <div id="picker-clue">
       Click to select an element. Hold <strong>Ctrl</strong> to pause. Press <strong>Esc</strong> to cancel.
     </div>
   );
@@ -41,8 +41,29 @@ export const App = memo(() => {
   const panelContainerRef = useRef<HTMLDivElement | null>(null);
   const rulesPanelRef = useRef<HTMLDivElement | null>(null);
   const selectorInputRef = useRef<HTMLInputElement | null>(null);
+  const wakeLockSentinelRef = useRef<WakeLockSentinel | null>(null);
 
   const { config, saveConfigNow, updateConfig } = useConfigPersistence();
+
+  const releaseWakeLock = useCallback(async () => {
+    if (wakeLockSentinelRef.current) {
+      await wakeLockSentinelRef.current.release();
+      wakeLockSentinelRef.current = null;
+    }
+  }, []);
+
+  const acquireWakeLock = useCallback(async () => {
+    if ('wakeLock' in navigator) {
+      try {
+        wakeLockSentinelRef.current = await navigator.wakeLock.request('screen');
+        wakeLockSentinelRef.current.addEventListener('release', () => {
+          wakeLockSentinelRef.current = null;
+        });
+      } catch (err: any) {
+        console.error(`Could not acquire wake lock: ${err.name}, ${err.message}`);
+      }
+    }
+  }, []);
 
   const onTimeout = useCallback(() => {
     setIsRunning(false);
@@ -104,6 +125,7 @@ export const App = memo(() => {
       },
       selector: newSelector,
     });
+
     if (selectorInputRef.current) {
       selectorInputRef.current.value = '';
       selectorInputRef.current.focus();
@@ -130,7 +152,7 @@ export const App = memo(() => {
 
   const handleListClick = useCallback(
     (event: MouseEvent<HTMLDivElement>) => {
-      const target = (event.target as HTMLElement).closest('.sat-selector-item-btn');
+      const target = (event.target as HTMLElement).closest('.selector-item-btn');
       if (!target) {
         return;
       }
@@ -140,12 +162,12 @@ export const App = memo(() => {
         return;
       }
 
-      if (target.classList.contains('sat-selector-item-remove-btn')) {
+      if (target.classList.contains('selector-item-remove-btn')) {
         if (editingRuleId === ruleId) {
           handleCloseRules();
         }
         removeRule(ruleId);
-      } else if (target.classList.contains('sat-selector-item-config-btn')) {
+      } else if (target.classList.contains('selector-item-config-btn')) {
         if (editingRuleId === ruleId) {
           handleCloseRules();
         } else {
@@ -178,19 +200,19 @@ export const App = memo(() => {
     if (!inputEl) {
       return;
     }
-    inputEl.classList.remove('sat-input-error', 'sat-input-success');
+    inputEl.classList.remove('input-error', 'input-success');
 
     const showError = () => {
-      inputEl.classList.add('sat-input-error');
+      inputEl.classList.add('input-error');
       setTimeout(() => {
-        inputEl.classList.remove('sat-input-error');
+        inputEl.classList.remove('input-error');
       }, 1500);
     };
 
     const showSuccess = () => {
-      inputEl.classList.add('sat-input-success');
+      inputEl.classList.add('input-success');
       setTimeout(() => {
-        inputEl.classList.remove('sat-input-success');
+        inputEl.classList.remove('input-success');
       }, 1500);
     };
 
@@ -229,16 +251,18 @@ export const App = memo(() => {
   );
 
   const handleStart = useCallback(() => {
+    acquireWakeLock();
     startRunner();
     localStorage.setItem(STORAGE_AUTORUN_KEY, 'true');
-  }, [startRunner]);
+  }, [startRunner, acquireWakeLock]);
 
   const handleStop = useCallback(() => {
+    releaseWakeLock();
     stopRunner();
     setIsAutoRun(false);
     setStatus(StatusState.STOPPED);
     localStorage.setItem(STORAGE_AUTORUN_KEY, 'false');
-  }, [stopRunner, setIsAutoRun, setStatus]);
+  }, [stopRunner, setIsAutoRun, setStatus, releaseWakeLock]);
 
   useEffect(() => {
     const isRunning = useAppStore.getState().isRunning;
@@ -310,6 +334,12 @@ export const App = memo(() => {
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [config.visible, updateConfig]);
+
+  useEffect(() => {
+    return () => {
+      releaseWakeLock();
+    };
+  }, [releaseWakeLock]);
 
   return (
     <>

@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 
 import { App } from './app/App';
 import { STORAGE_AUTORUN_KEY, STORAGE_CONFIG_KEY } from './app/constants';
-import { SAT_APP_STYLES, SAT_GLOBAL_STYLES } from './app/styles';
+import { APP_STYLES, GLOBAL_STYLES } from './app/styles';
 
 import type { Root } from 'react-dom/client';
 
@@ -18,13 +18,13 @@ function injectGlobalStyles(): void {
 
   const styleEl = document.createElement('style');
   styleEl.id = styleId;
-  styleEl.textContent = SAT_GLOBAL_STYLES;
+  styleEl.textContent = GLOBAL_STYLES;
   document.head.appendChild(styleEl);
 }
 
 function initializePanel(): void {
   if (!document.body) {
-    console.warn('SAT Panel: document.body not found. Cannot initialize panel.');
+    console.warn('document.body not found. Cannot initialize panel.');
     return;
   }
 
@@ -41,16 +41,16 @@ function initializePanel(): void {
     shadowRoot = shadowHost.attachShadow({ mode: 'open' });
   }
 
-  let appContainer = shadowRoot.querySelector('#sat-app-container');
+  let appContainer = shadowRoot.querySelector('#app-container');
   if (!appContainer) {
     shadowRoot.innerHTML = '';
 
     const styleEl = document.createElement('style');
-    styleEl.textContent = SAT_APP_STYLES;
+    styleEl.textContent = APP_STYLES;
     shadowRoot.appendChild(styleEl);
 
     appContainer = document.createElement('div');
-    appContainer.id = 'sat-app-container';
+    appContainer.id = 'app-container';
     shadowRoot.appendChild(appContainer);
 
     if (reactRoot) {
@@ -88,13 +88,13 @@ function main(): void {
     const originalRemoveItem = Storage.prototype.removeItem;
     Storage.prototype.removeItem = function (this: Storage, key: string): void {
       if (key === STORAGE_CONFIG_KEY || key === STORAGE_AUTORUN_KEY) {
-        console.warn(`SAT Panel: Attempt to remove protected key "${key}" was blocked.`);
+        console.warn(`Attempt to remove protected key "${key}" was blocked.`);
         return;
       }
       originalRemoveItem.call(this, key);
     };
   } catch (error) {
-    console.error('SAT Panel: Failed to protect localStorage.', error);
+    console.error('Failed to protect localStorage.', error);
   }
 
   initializePanel();
@@ -103,7 +103,7 @@ function main(): void {
     const currentRootElement = document.getElementById(ROOT_ELEMENT_ID);
 
     if (!document.body || !currentRootElement || !document.body.contains(currentRootElement)) {
-      console.warn('SAT Panel: Root element has been removed from DOM. Re-injecting...');
+      console.warn('Root element has been removed from DOM. Re-injecting...');
 
       if (reactRoot) {
         reactRoot.unmount();

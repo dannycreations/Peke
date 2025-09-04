@@ -96,8 +96,8 @@ export const usePanelDrag = ({ mainPanelRef, rulesPanelRef, onDragEnd }: UsePane
   );
 
   useEffect(() => {
-    const mainPanelHeader = mainPanelRef.current?.querySelector('#sat-panel-header') as HTMLElement | null;
-    const rulesPanelHeader = rulesPanelRef.current?.querySelector('#sat-rules-panel-header') as HTMLElement | null;
+    const mainPanelHeader = mainPanelRef.current?.querySelector('#panel-header') as HTMLElement | null;
+    const rulesPanelHeader = rulesPanelRef.current?.querySelector('#rules-panel-header') as HTMLElement | null;
 
     let cleanupMainPanel = noop;
     let cleanupRulesPanel = noop;

@@ -3,7 +3,7 @@ import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { ActionType as ActionTypeConst } from '../app/constants';
 
 import type { KeyboardEvent, RefObject } from 'react';
-import type { ActionType, DeleteActionType, Rule, RuleOptions } from '../app/types';
+import type { ActionType, DeleteActionType, Rule } from '../app/types';
 
 interface RulesPanelProps {
   readonly editingRule: Rule | null;
@@ -22,7 +22,7 @@ const handleKeyDown = (event: KeyboardEvent<HTMLInputElement | HTMLSelectElement
 export const RulesPanel = memo<RulesPanelProps>(
   ({ editingRule, editingRuleIndex, onCloseRules, onSaveRule, onTestSelector, rulesPanelRef, startPicking }) => {
     const [action, setAction] = useState<ActionType>(ActionTypeConst.CLICK);
-    const [customSelector, setcustomSelector] = useState<string>('');
+    const [customSelector, setCustomSelector] = useState<string>('');
     const [deleteActionType, setDeleteActionType] = useState<DeleteActionType>('self');
     const [ignoreWait, setIgnoreWait] = useState<boolean>(false);
     const [parentSelector, setParentSelector] = useState<string>('');
@@ -35,7 +35,7 @@ export const RulesPanel = memo<RulesPanelProps>(
     useEffect(() => {
       if (editingRule) {
         setAction(editingRule.action);
-        setcustomSelector(editingRule.options.customSelector || '');
+        setCustomSelector(editingRule.options.customSelector || '');
         setDeleteActionType(editingRule.options.deleteActionType || 'self');
         setIgnoreWait(editingRule.options.ignoreWait || false);
         setParentSelector(editingRule.options.parentSelector || '');
@@ -55,9 +55,9 @@ export const RulesPanel = memo<RulesPanelProps>(
       });
     }, [startPicking]);
 
-    const handlePickcustomSelector = useCallback(() => {
+    const handlePickCustomSelector = useCallback(() => {
       startPicking((newSelector: string) => {
-        setcustomSelector(newSelector);
+        setCustomSelector(newSelector);
       });
     }, [startPicking]);
 
@@ -66,27 +66,21 @@ export const RulesPanel = memo<RulesPanelProps>(
         return;
       }
 
-      const {
-        deleteActionType: _deleteActionType,
-        parentSelector: _parentSelector,
-        customSelector: _customSelector,
-        ...baseOptions
-      } = editingRule.options;
-
-      let updatedOptions: RuleOptions = {
-        ...baseOptions,
+      const updatedOptions: {
+        ignoreWait: boolean;
+        deleteActionType?: DeleteActionType;
+        parentSelector?: string;
+        customSelector?: string;
+      } = {
         ignoreWait,
       };
 
       if (action === ActionTypeConst.DELETE) {
-        updatedOptions = {
-          ...updatedOptions,
-          deleteActionType,
-        };
+        updatedOptions.deleteActionType = deleteActionType;
         if (deleteActionType === 'parent') {
-          updatedOptions = { ...updatedOptions, parentSelector };
+          updatedOptions.parentSelector = parentSelector;
         } else if (deleteActionType === 'custom') {
-          updatedOptions = { ...updatedOptions, customSelector };
+          updatedOptions.customSelector = customSelector;
         }
       }
 
@@ -107,17 +101,17 @@ export const RulesPanel = memo<RulesPanelProps>(
     const isDeleteAction: boolean = action === ActionTypeConst.DELETE;
 
     return (
-      <div id="sat-rules-panel" ref={rulesPanelRef} style={{ display: editingRule ? 'block' : 'none' }}>
-        <div id="sat-rules-panel-header" className="sat-panel-header">
+      <div id="rules-panel" ref={rulesPanelRef} style={{ display: editingRule ? 'block' : 'none' }}>
+        <div id="rules-panel-header" className="panel-header">
           <span>{editingRule ? `Configure Rule #${editingRuleIndex + 1}` : 'Rule Configuration'}</span>
         </div>
-        <div className="sat-panel-body">
-          <label className="sat-panel-label">
+        <div className="panel-body">
+          <label className="panel-label">
             jQuery Selector
             <input
               ref={selectorInputRef}
-              className="sat-panel-input"
-              id="sat-rules-selector-input"
+              className="panel-input"
+              id="rules-selector-input"
               placeholder="Enter selector"
               style={{ marginBottom: '4px' }}
               type="text"
@@ -125,21 +119,21 @@ export const RulesPanel = memo<RulesPanelProps>(
               onChange={(e) => setSelector(e.target.value)}
               onKeyDown={handleKeyDown}
             />
-            <div className="sat-btn-group">
-              <button id="sat-rules-pick-btn" className="sat-panel-button" title="Pick an element from the page" onClick={handlePick}>
+            <div className="btn-group">
+              <button id="rules-pick-btn" className="panel-button" title="Pick an element from the page" onClick={handlePick}>
                 Pick
               </button>
-              <button id="sat-rules-test-btn" className="sat-panel-button" title="Test the current selector" onClick={handleTest}>
+              <button id="rules-test-btn" className="panel-button" title="Test the current selector" onClick={handleTest}>
                 Test
               </button>
             </div>
           </label>
 
-          <label className="sat-panel-label">
+          <label className="panel-label">
             Action
             <select
-              id="sat-rules-panel-action"
-              className="sat-panel-select"
+              id="rules-panel-action"
+              className="panel-select"
               value={action}
               onChange={(e) => setAction(e.target.value as ActionType)}
               onKeyDown={handleKeyDown}
@@ -152,11 +146,11 @@ export const RulesPanel = memo<RulesPanelProps>(
 
           {isDeleteAction && (
             <>
-              <label id="sat-rules-panel-delete-type-label" className="sat-panel-label">
+              <label id="rules-panel-delete-type-label" className="panel-label">
                 Delete Type
                 <select
-                  id="sat-rules-panel-delete-type"
-                  className="sat-panel-select"
+                  id="rules-panel-delete-type"
+                  className="panel-select"
                   value={deleteActionType}
                   onChange={(e) => setDeleteActionType(e.target.value as DeleteActionType)}
                   onKeyDown={handleKeyDown}
@@ -167,12 +161,12 @@ export const RulesPanel = memo<RulesPanelProps>(
                 </select>
               </label>
               {deleteActionType === 'parent' && (
-                <label id="sat-rules-panel-parent-label" className="sat-panel-label">
+                <label id="rules-panel-parent-label" className="panel-label">
                   Parent Selector
                   <input
                     ref={parentSelectorInputRef}
-                    id="sat-rules-parent-input"
-                    className="sat-panel-input"
+                    id="rules-parent-input"
+                    className="panel-input"
                     style={{ marginBottom: '4px' }}
                     type="text"
                     value={parentSelector}
@@ -180,18 +174,13 @@ export const RulesPanel = memo<RulesPanelProps>(
                     onChange={(e) => setParentSelector(e.target.value)}
                     onKeyDown={handleKeyDown}
                   />
-                  <div className="sat-btn-group">
-                    <button
-                      id="sat-rules-parent-pick-btn"
-                      className="sat-panel-button"
-                      title="Pick Parent Element"
-                      onClick={handlePickParentSelector}
-                    >
+                  <div className="btn-group">
+                    <button id="rules-parent-pick-btn" className="panel-button" title="Pick Parent Element" onClick={handlePickParentSelector}>
                       Pick
                     </button>
                     <button
-                      id="sat-rules-parent-test-btn"
-                      className="sat-panel-button"
+                      id="rules-parent-test-btn"
+                      className="panel-button"
                       title="Test Parent Selector"
                       onClick={() => onTestSelector(parentSelector, parentSelectorInputRef.current)}
                     >
@@ -201,31 +190,26 @@ export const RulesPanel = memo<RulesPanelProps>(
                 </label>
               )}
               {deleteActionType === 'custom' && (
-                <label id="sat-rules-panel-custom-label" className="sat-panel-label">
+                <label id="rules-panel-custom-label" className="panel-label">
                   Custom Selector
                   <input
                     ref={customSelectorInputRef}
-                    id="sat-rules-custom-input"
-                    className="sat-panel-input"
+                    id="rules-custom-input"
+                    className="panel-input"
                     style={{ marginBottom: '4px' }}
                     type="text"
                     value={customSelector}
                     placeholder="e.g., .ad-banner"
-                    onChange={(e) => setcustomSelector(e.target.value)}
+                    onChange={(e) => setCustomSelector(e.target.value)}
                     onKeyDown={handleKeyDown}
                   />
-                  <div className="sat-btn-group">
-                    <button
-                      id="sat-rules-custom-pick-btn"
-                      className="sat-panel-button"
-                      title="Pick Custom Element"
-                      onClick={handlePickcustomSelector}
-                    >
+                  <div className="btn-group">
+                    <button id="rules-custom-pick-btn" className="panel-button" title="Pick Custom Element" onClick={handlePickCustomSelector}>
                       Pick
                     </button>
                     <button
-                      id="sat-rules-custom-test-btn"
-                      className="sat-panel-button"
+                      id="rules-custom-test-btn"
+                      className="panel-button"
                       title="Test Custom Selector"
                       onClick={() => onTestSelector(customSelector, customSelectorInputRef.current)}
                     >
@@ -237,19 +221,19 @@ export const RulesPanel = memo<RulesPanelProps>(
             </>
           )}
 
-          <label className="sat-panel-label sat-switch-label">
+          <label className="panel-label switch-label">
             <span>Ignore wait</span>
-            <div className="sat-switch">
-              <input id="sat-rules-ignore-wait-checkbox" type="checkbox" checked={ignoreWait} onChange={(e) => setIgnoreWait(e.target.checked)} />
-              <span className="sat-switch-slider"></span>
+            <div className="switch">
+              <input id="rules-ignore-wait-checkbox" type="checkbox" checked={ignoreWait} onChange={(e) => setIgnoreWait(e.target.checked)} />
+              <span className="switch-slider"></span>
             </div>
           </label>
 
-          <div className="sat-btn-group">
-            <button id="sat-rules-panel-save-btn" className="sat-panel-button" onClick={handleSave}>
+          <div className="btn-group">
+            <button id="rules-panel-save-btn" className="panel-button" onClick={handleSave}>
               Save
             </button>
-            <button id="sat-rules-panel-cancel-btn" className="sat-panel-button" onClick={onCloseRules}>
+            <button id="rules-panel-cancel-btn" className="panel-button" onClick={onCloseRules}>
               Cancel
             </button>
           </div>

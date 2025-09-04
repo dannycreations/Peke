@@ -37,7 +37,7 @@ export const useConfigPersistence = (): UseConfigPersistenceReturn => {
         }
       }
     } catch (error) {
-      console.warn('SAT: Failed to load config from localStorage.', error);
+      console.warn('Failed to load config from localStorage.', error);
     }
 
     setSelectorList(loadedConfig.selectors);

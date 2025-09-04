@@ -47,23 +47,23 @@ export const useElementPicker = ({ panelContainerRef, rulesPanelRef }: UseElemen
       if (panelContainerRef.current?.contains(target) || rulesPanelRef.current?.contains(target)) {
         const { lastHoveredElement } = useAppStore.getState();
         if (lastHoveredElement) {
-          lastHoveredElement.classList.remove('sat-highlight-pick');
+          lastHoveredElement.classList.remove('highlight-pick');
           setLastHoveredElement(null);
         }
         return;
       }
 
       const { lastHoveredElement } = useAppStore.getState();
-
       if (target === lastHoveredElement) {
         return;
       }
 
       if (lastHoveredElement) {
-        lastHoveredElement.classList.remove('sat-highlight-pick');
+        lastHoveredElement.classList.remove('highlight-pick');
       }
+
       if (target?.classList) {
-        target.classList.add('sat-highlight-pick');
+        target.classList.add('highlight-pick');
         setLastHoveredElement(target);
       }
     };
@@ -108,7 +108,7 @@ export const useElementPicker = ({ panelContainerRef, rulesPanelRef }: UseElemen
           document.body.style.cursor = 'default';
           const { lastHoveredElement } = useAppStore.getState();
           if (lastHoveredElement) {
-            lastHoveredElement.classList.remove('sat-highlight-pick');
+            lastHoveredElement.classList.remove('highlight-pick');
             setLastHoveredElement(null);
           }
         } else if (event.type === 'keyup' && isPaused) {
@@ -120,8 +120,8 @@ export const useElementPicker = ({ panelContainerRef, rulesPanelRef }: UseElemen
       }
     };
 
-    panelContainerRef.current?.classList.add('sat-picking-mode-panel');
-    rulesPanelRef.current?.classList.add('sat-picking-mode-panel');
+    panelContainerRef.current?.classList.add('picking-mode-panel');
+    rulesPanelRef.current?.classList.add('picking-mode-panel');
     document.body.style.cursor = 'crosshair';
 
     document.addEventListener('mouseover', handlePickingHover, { capture: true });
@@ -130,12 +130,12 @@ export const useElementPicker = ({ panelContainerRef, rulesPanelRef }: UseElemen
     document.addEventListener('keyup', handleKeyEvent, { capture: true });
 
     return () => {
-      panelContainerRef.current?.classList.remove('sat-picking-mode-panel');
-      rulesPanelRef.current?.classList.remove('sat-picking-mode-panel');
+      panelContainerRef.current?.classList.remove('picking-mode-panel');
+      rulesPanelRef.current?.classList.remove('picking-mode-panel');
       document.body.style.cursor = 'default';
       const { lastHoveredElement } = useAppStore.getState();
       if (lastHoveredElement) {
-        lastHoveredElement.classList.remove('sat-highlight-pick');
+        lastHoveredElement.classList.remove('highlight-pick');
         setLastHoveredElement(null);
       }
 

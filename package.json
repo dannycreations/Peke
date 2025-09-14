@@ -23,20 +23,20 @@
     "es-toolkit": "^1.39.10"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.29.6",
+    "@changesets/cli": "^2.29.7",
     "@ianvs/prettier-plugin-sort-imports": "^4.7.0",
-    "@types/node": "22.18.1",
+    "@types/node": "22.18.3",
     "chokidar": "^4.0.3",
     "husky": "^9.1.7",
-    "npm-check-updates": "^18.0.3",
+    "npm-check-updates": "^18.1.1",
     "prettier": "^3.6.2",
     "terser": "^5.44.0",
     "turbo": "^2.5.6",
     "typescript": "^5.9.2",
-    "vite": "^7.1.4",
+    "vite": "^7.1.5",
     "vite-plugin-checker": "^0.10.3",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4"
   },
-  "packageManager": "pnpm@10.15.1"
+  "packageManager": "pnpm@10.16.1"
 }

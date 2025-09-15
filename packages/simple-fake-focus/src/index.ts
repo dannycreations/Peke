@@ -17,7 +17,7 @@ const SPOOF_CONFIG: readonly SpoofConfig[] = [
     target: Document.prototype,
     key: 'hidden',
     spoof: {
-      get: (): boolean => false,
+      get: () => false,
       configurable: true,
     },
   },
@@ -25,7 +25,7 @@ const SPOOF_CONFIG: readonly SpoofConfig[] = [
     target: Document.prototype,
     key: 'webkitHidden',
     spoof: {
-      get: (): boolean => false,
+      get: () => false,
       configurable: true,
     },
   },
@@ -49,7 +49,7 @@ const SPOOF_CONFIG: readonly SpoofConfig[] = [
     target: document,
     key: 'hasFocus',
     spoof: {
-      value: (): boolean => true,
+      value: () => true,
       configurable: true,
       writable: true,
     },
@@ -58,7 +58,7 @@ const SPOOF_CONFIG: readonly SpoofConfig[] = [
     target: window,
     key: 'focus',
     spoof: {
-      value: (): void => {},
+      value: () => {},
       configurable: true,
       writable: true,
     },
@@ -141,11 +141,7 @@ class ActivitySpoofer {
         const { target, key, spoof } = config;
         try {
           const descriptor = Object.getOwnPropertyDescriptor(target, key);
-          this.originalDescriptors.set(key, {
-            target,
-            key,
-            descriptor,
-          });
+          this.originalDescriptors.set(key, { target, key, descriptor });
           Object.defineProperty(target, key, spoof);
         } catch {}
       }
@@ -215,6 +211,8 @@ class ActivitySpoofer {
       const keyboardEvent = new KeyboardEvent('keyup', {
         key: 'F32',
         code: 'F32',
+        which: 143,
+        keyCode: 143,
         bubbles: true,
         cancelable: true,
       });

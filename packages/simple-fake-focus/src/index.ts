@@ -46,7 +46,7 @@ const SPOOF_CONFIG: readonly SpoofConfig[] = [
     },
   },
   {
-    target: document,
+    target: Document.prototype,
     key: 'hasFocus',
     spoof: {
       value: () => true,
@@ -55,10 +55,28 @@ const SPOOF_CONFIG: readonly SpoofConfig[] = [
     },
   },
   {
-    target: window,
+    target: Document.prototype,
+    key: 'onvisibilitychange',
+    spoof: {
+      get: () => null,
+      set: () => {},
+      configurable: true,
+    },
+  },
+  {
+    target: Document.prototype,
+    key: 'onwebkitvisibilitychange',
+    spoof: {
+      get: () => null,
+      set: () => {},
+      configurable: true,
+    },
+  },
+  {
+    target: window.Window.prototype,
     key: 'focus',
     spoof: {
-      value: () => {},
+      value: Object.assign(() => {}, { toString: () => 'function focus() { [native code] }' }),
       configurable: true,
       writable: true,
     },
@@ -73,16 +91,26 @@ class ActivitySpoofer {
   private intervalId: number | null = null;
   private debounceId: number | null = null;
   private audioContext: AudioContext | null = null;
+  private operationQueue: Promise<void> = Promise.resolve();
 
   private readonly originalDescriptors: Map<string, OriginalDescriptorInfo> = new Map();
 
   public constructor() {
-    const onStateChange = (): void => {
+    const onStateChange = (event?: Event): void => {
       try {
-        if (this.isOriginalPageHidden() || !this.isOriginalPageFocused()) {
-          this.activateDebounced();
+        const isHidden = this.isOriginalPageHidden();
+        const isFocused = this.isOriginalPageFocused();
+
+        if (isHidden || !isFocused) {
+          this.activate();
         } else {
-          this.deactivateDebounced();
+          this.deactivate();
+        }
+
+        // If we are currently spoofing, we must prevent the page from receiving the state change event.
+        if (event && this.isActive) {
+          event.stopImmediatePropagation();
+          event.preventDefault();
         }
       } catch {}
     };
@@ -95,44 +123,52 @@ class ActivitySpoofer {
     document.addEventListener('webkitvisibilitychange', onStateChange, true);
   }
 
-  private async activate(): Promise<void> {
-    if (this.isActive) {
-      return;
-    }
-    this.isActive = true;
-
-    this.manageSpoofs(true);
-    await this.manageSilentAudio(true);
-    this.intervalId = window.setInterval(() => this.emitActivity(), ACTIVITY_EMIT_MS);
-  }
-
-  private async deactivate(): Promise<void> {
-    if (!this.isActive) {
-      return;
-    }
-    this.isActive = false;
-
-    if (this.intervalId !== null) {
-      window.clearInterval(this.intervalId);
-      this.intervalId = null;
-    }
-
-    await this.manageSilentAudio(false);
-    this.manageSpoofs(false);
-  }
-
-  private activateDebounced(): void {
+  private activate(): void {
     if (this.debounceId !== null) {
       window.clearTimeout(this.debounceId);
     }
-    this.debounceId = window.setTimeout(() => this.activate(), STATE_CHANGE_MS);
+    this.debounceId = window.setTimeout(() => {
+      this.operationQueue = this.operationQueue.catch(Boolean).then(async () => {
+        if (this.isActive) {
+          return;
+        }
+
+        this.manageSpoofs(true);
+        this.isActive = true;
+
+        try {
+          await this.manageSilentAudio(true);
+          if (this.isActive && this.intervalId === null) {
+            this.intervalId = window.setInterval(() => this.emitActivity(), ACTIVITY_EMIT_MS);
+          }
+        } catch {
+          await this.manageSilentAudio(false);
+        }
+      });
+    }, STATE_CHANGE_MS);
   }
 
-  private deactivateDebounced(): void {
+  private deactivate(): void {
     if (this.debounceId !== null) {
       window.clearTimeout(this.debounceId);
     }
-    this.debounceId = window.setTimeout(() => this.deactivate(), STATE_CHANGE_MS);
+    this.debounceId = window.setTimeout(() => {
+      this.operationQueue = this.operationQueue.catch(Boolean).then(async () => {
+        if (!this.isActive) {
+          return;
+        }
+
+        if (this.intervalId !== null) {
+          window.clearInterval(this.intervalId);
+          this.intervalId = null;
+        }
+
+        this.manageSpoofs(false);
+        this.isActive = false;
+
+        await this.manageSilentAudio(false);
+      });
+    }, STATE_CHANGE_MS);
   }
 
   private manageSpoofs(shouldApply: boolean): void {
@@ -140,8 +176,24 @@ class ActivitySpoofer {
       for (const config of SPOOF_CONFIG) {
         const { target, key, spoof } = config;
         try {
+          // Use target-key combination as unique identifier
+          const descriptorKey = `${target.constructor.name}.${key}`;
+          if (this.originalDescriptors.has(descriptorKey)) {
+            continue;
+          }
+
+          // Ensure spoof functions look like native code to toString() checks
+          if (typeof spoof.get === 'function') {
+            Object.defineProperty(spoof.get, 'name', { value: key, configurable: true });
+            spoof.get.toString = () => `function get ${key}() { [native code] }`;
+          }
+          if (typeof spoof.value === 'function') {
+            Object.defineProperty(spoof.value, 'name', { value: key, configurable: true });
+            spoof.value.toString = () => `function ${key}() { [native code] }`;
+          }
+
           const descriptor = Object.getOwnPropertyDescriptor(target, key);
-          this.originalDescriptors.set(key, { target, key, descriptor });
+          this.originalDescriptors.set(descriptorKey, { target, key, descriptor });
           Object.defineProperty(target, key, spoof);
         } catch {}
       }
@@ -163,18 +215,18 @@ class ActivitySpoofer {
 
   private async manageSilentAudio(shouldStart: boolean): Promise<void> {
     if (!shouldStart) {
-      if (this.audioContext) {
+      const ctx = this.audioContext;
+      this.audioContext = null;
+
+      if (ctx && ctx.state !== 'closed') {
         try {
-          if (this.audioContext.state !== 'closed') {
-            await this.audioContext.close();
-          }
+          await ctx.close();
         } catch {}
-        this.audioContext = null;
       }
       return;
     }
 
-    if (this.audioContext && this.audioContext.state === 'running') {
+    if (this.audioContext?.state === 'running') {
       return;
     }
 
@@ -186,20 +238,22 @@ class ActivitySpoofer {
         return;
       }
 
-      this.audioContext = new AudioContextAPI();
-      if (this.audioContext.state === 'suspended') {
-        await this.audioContext.resume();
+      const ctx = new AudioContextAPI();
+      this.audioContext = ctx;
+
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
       }
-      if (this.audioContext.state !== 'running') {
+      if (ctx.state !== 'running') {
         throw new Error('AudioContext failed to start or resume.');
       }
 
-      const gainNode = this.audioContext.createGain();
+      const gainNode = ctx.createGain();
       gainNode.gain.value = 0.00001;
 
-      const oscillator = this.audioContext.createOscillator();
+      const oscillator = ctx.createOscillator();
       oscillator.frequency.value = 20;
-      oscillator.connect(gainNode).connect(this.audioContext.destination);
+      oscillator.connect(gainNode).connect(ctx.destination);
       oscillator.start();
     } catch {
       await this.manageSilentAudio(false);
@@ -208,15 +262,25 @@ class ActivitySpoofer {
 
   private emitActivity(): void {
     try {
-      const keyboardEvent = new KeyboardEvent('keyup', {
-        key: 'F32',
-        code: 'F32',
-        which: 143,
-        keyCode: 143,
+      // Simulate more realistic activity to prevent idle detection
+      const mouseEvent = new MouseEvent('mousemove', {
+        bubbles: true,
+        cancelable: true,
+        view: window,
+        clientX: Math.floor(Math.random() * 10),
+        clientY: Math.floor(Math.random() * 10),
+      });
+      document.dispatchEvent(mouseEvent);
+
+      // Also fire a non-intrusive key event
+      const keyEvent = new KeyboardEvent('keydown', {
+        key: 'Shift',
+        code: 'ShiftLeft',
+        keyCode: 16,
         bubbles: true,
         cancelable: true,
       });
-      document.dispatchEvent(keyboardEvent);
+      document.dispatchEvent(keyEvent);
     } catch {}
   }
 
@@ -225,7 +289,7 @@ class ActivitySpoofer {
       return document.hidden;
     }
 
-    const original = this.originalDescriptors.get('hidden');
+    const original = this.originalDescriptors.get('Document.hidden');
     if (!original?.descriptor?.get) {
       return false;
     }
@@ -242,7 +306,7 @@ class ActivitySpoofer {
       return document.hasFocus();
     }
 
-    const original = this.originalDescriptors.get('hasFocus');
+    const original = this.originalDescriptors.get('Document.hasFocus');
     if (typeof original?.descriptor?.value !== 'function') {
       return true;
     }

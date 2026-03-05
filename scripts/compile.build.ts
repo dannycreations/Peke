@@ -63,7 +63,7 @@ const PACKAGE_FILE = (path: string) => posix.resolve(path, 'package.json');
 export async function main(packageName?: string): Promise<void> {
   await mkdir(OUTPUT_DIR, { recursive: true });
 
-  let command = 'pnpm run build';
+  let command = 'bun run build';
   if (packageName) {
     command += ` --filter={./packages/${packageName}}`;
   }

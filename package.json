@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "tsx scripts/dev.build.ts",
     "build": "turbo run build",
-    "check": "tsc --noEmit",
+    "check": "turbo run check",
     "test": "turbo run test",
     "format": "prettier --write .",
     "update": "turbo run update && npm-check-updates -u -x @types/node",

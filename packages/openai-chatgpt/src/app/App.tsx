@@ -1,21 +1,24 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { Component } from 'preact';
+import { createPortal } from 'preact/compat';
+import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 
-import { useStore } from '../stores/useStore';
+import { modelIdSignal, systemPromptSignal } from '../stores/useStore';
 import { getStoredItem, setStoredItem } from '../utilities/storage';
 import { CONFIG } from './constants';
 
-class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+import type { ComponentChildren, ErrorInfo } from 'preact';
+
+class ErrorBoundary extends Component<{ children: ComponentChildren }, { hasError: boolean }> {
   public static getDerivedStateFromError() {
     return { hasError: true };
   }
 
-  public constructor(props: { children: React.ReactNode }) {
+  public constructor(props: { children: ComponentChildren }) {
     super(props);
     this.state = { hasError: false };
   }
 
-  public componentDidCatch(error: unknown, errorInfo: React.ErrorInfo) {
+  public componentDidCatch(error: unknown, errorInfo: ErrorInfo) {
     console.error('OpenAI ChatGPT Tweak Error:', error, errorInfo);
   }
 
@@ -25,8 +28,10 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
   }
 }
 
-const AppContent: React.FC = () => {
-  const { modelId, systemPrompt, setModelId, setSystemPrompt } = useStore();
+const AppContent = () => {
+  const modelId = modelIdSignal.value;
+  const systemPrompt = systemPromptSignal.value;
+
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isTooltipVisible, setIsTooltipVisible] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -86,11 +91,11 @@ const AppContent: React.FC = () => {
       }
 
       const prompt = prompts[currentPath] || prompts['/'] || '';
-      setSystemPrompt(prompt);
+      systemPromptSignal.value = prompt;
     } catch (error) {
       console.error('Error loading prompt:', error);
     }
-  }, [setSystemPrompt]);
+  }, []);
 
   const savePrompt = (value: string) => {
     const trimmed = value.trim();
@@ -112,7 +117,7 @@ const AppContent: React.FC = () => {
 
     if (changesMade) {
       setStoredItem(CONFIG.PROMPT_STORAGE_KEY, prompts);
-      setSystemPrompt(trimmed);
+      systemPromptSignal.value = trimmed;
 
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 1000);
@@ -158,7 +163,7 @@ const AppContent: React.FC = () => {
   }, [isMenuOpen, loadPrompt]);
 
   useEffect(() => {
-    setStoredItem(CONFIG.MODEL_STORAGE_KEY, modelId);
+    setStoredItem(CONFIG.MODEL_STORAGE_KEY, modelIdSignal.value);
   }, [modelId]);
 
   useEffect(() => {
@@ -187,7 +192,7 @@ const AppContent: React.FC = () => {
         aria-haspopup="true"
         aria-expanded={isMenuOpen}
         className="hover:bg-token-bg-tertiary group-radix-state-open:bg-token-bg-tertiary rounded-full p-2.5"
-        onClick={() => setIsMenuOpen((prev) => !prev)}
+        onClick={() => setIsMenuOpen((prev: boolean) => !prev)}
         onMouseEnter={() => setIsTooltipVisible(true)}
         onMouseLeave={() => setIsTooltipVisible(false)}
       >
@@ -254,7 +259,7 @@ const AppContent: React.FC = () => {
                   id="model-select"
                   className="w-full text-sm rounded-lg border border-token-border-medium bg-token-main-surface-secondary p-2 focus:outline-none focus:ring-1 focus:ring-token-main-surface-tertiary"
                   value={modelId}
-                  onChange={(e) => setModelId(e.target.value)}
+                  onChange={(e) => (modelIdSignal.value = (e.target as HTMLSelectElement).value)}
                 >
                   {Object.entries(CONFIG.AVAILABLE_MODELS).map(([id, name]) => (
                     <option key={id} value={id}>
@@ -287,8 +292,8 @@ const AppContent: React.FC = () => {
                   placeholder="Enter custom system prompt..."
                   className="w-full text-sm rounded-lg border border-token-border-medium bg-token-main-surface-secondary p-2 resize-none focus:outline-none focus:ring-1 focus:ring-token-main-surface-tertiary"
                   value={systemPrompt}
-                  onBlur={(e) => savePrompt(e.target.value)}
-                  onChange={(e) => setSystemPrompt(e.target.value)}
+                  onBlur={(e) => savePrompt((e.target as HTMLTextAreaElement).value)}
+                  onChange={(e) => (systemPromptSignal.value = (e.target as HTMLTextAreaElement).value)}
                 />
               </div>
             </div>
@@ -299,7 +304,7 @@ const AppContent: React.FC = () => {
   );
 };
 
-export const AppView: React.FC = () => (
+export const AppView = () => (
   <ErrorBoundary>
     <AppContent />
   </ErrorBoundary>

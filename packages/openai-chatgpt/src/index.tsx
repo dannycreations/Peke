@@ -1,9 +1,9 @@
 import { runOnObserver } from '@/helpers/autorun';
-import { createRoot } from 'react-dom/client';
+import { render } from 'preact';
 
 import { AppView } from './app/App';
 import { CONFIG } from './app/constants';
-import { useStore } from './stores/useStore';
+import { modelIdSignal, systemPromptSignal } from './stores/useStore';
 
 function patch(): void {
   if (window.originalFetch) return;
@@ -25,10 +25,8 @@ function patch(): void {
         }
 
         if (body && typeof body === 'object') {
-          const { modelId, systemPrompt } = useStore.getState();
-
           if (typeof body.model === 'string') {
-            body.model = modelId;
+            body.model = modelIdSignal.value;
           }
 
           if (Array.isArray(body.messages)) {
@@ -38,7 +36,7 @@ function patch(): void {
               create_time: Date.now() / 1000,
               content: {
                 content_type: 'text',
-                parts: [systemPrompt || CONFIG.DEFAULT_SYSTEM_PROMPT],
+                parts: [systemPromptSignal.value || CONFIG.DEFAULT_SYSTEM_PROMPT],
               },
               metadata: {
                 is_visually_hidden_from_conversation: true,
@@ -66,8 +64,7 @@ function main(): void {
   rootElement.id = 'ms-react-root';
   container.prepend(rootElement);
 
-  const root = createRoot(rootElement);
-  root.render(<AppView />);
+  render(<AppView />, rootElement);
 }
 
 patch();

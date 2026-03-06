@@ -59,34 +59,33 @@ const AppContent: React.FC = () => {
       const prompts = getStoredItem<Record<string, string>>(CONFIG.PROMPT_STORAGE_KEY, {});
       const currentPath = window.location.pathname;
 
-      if (currentPath !== '/' && prompts['/']) {
-        const rootPrompt = prompts['/'];
+      if (currentPath.startsWith('/c/') && prompts['/'] && !prompts[currentPath]) {
+        prompts[currentPath] = prompts['/'];
         delete prompts['/'];
-        prompts[currentPath] = rootPrompt;
         setStoredItem(CONFIG.PROMPT_STORAGE_KEY, prompts);
       }
 
       const historyElement = document.querySelector('#history') || document.querySelector('nav');
       if (historyElement) {
         const hrefElements = historyElement.querySelectorAll('a[href^="/c/"]');
-        if (hrefElements.length > 0) {
-          const historyHrefs = Array.from(hrefElements).map((r) => r.getAttribute('href'));
-          const histories = new Set(historyHrefs.filter(Boolean));
+        const historyHrefs = Array.from(hrefElements).map((r) => r.getAttribute('href'));
+        const histories = new Set(historyHrefs.filter(Boolean));
 
-          let changed = false;
-          for (const url of Object.keys(prompts)) {
-            if (url.startsWith('/c/') && !histories.has(url)) {
-              delete prompts[url];
-              changed = true;
-            }
+        histories.add(currentPath);
+
+        let changed = false;
+        for (const url of Object.keys(prompts)) {
+          if (url.startsWith('/c/') && !histories.has(url)) {
+            delete prompts[url];
+            changed = true;
           }
-          if (changed) {
-            setStoredItem(CONFIG.PROMPT_STORAGE_KEY, prompts);
-          }
+        }
+        if (changed) {
+          setStoredItem(CONFIG.PROMPT_STORAGE_KEY, prompts);
         }
       }
 
-      const prompt = prompts[currentPath] || '';
+      const prompt = prompts[currentPath] || prompts['/'] || '';
       setSystemPrompt(prompt);
     } catch (error) {
       console.error('Error loading prompt:', error);

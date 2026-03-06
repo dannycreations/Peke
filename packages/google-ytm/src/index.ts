@@ -1,4 +1,4 @@
-import { runOnComplete } from '@/helpers/autorun';
+import { runOnComplete, runOnObserver } from '@/helpers/autorun';
 import { debounce } from 'es-toolkit';
 
 interface PlaylistState {
@@ -107,25 +107,19 @@ function main(): void {
 
   const debouncedSortPlaylist = debounce(sortPlaylist, 100);
 
-  const observer = new MutationObserver(() => {
+  runOnObserver(() => {
     const playlistContainer = document.querySelector('ytmusic-playlist-shelf-renderer #contents');
+    if (!playlistContainer) return;
 
-    if (playlistContainer) {
-      const currentState = getPlaylistState(playlistContainer);
+    const currentState = getPlaylistState(playlistContainer);
 
-      const hasLengthChanged = currentState.length !== lastSortedLength;
-      const hasFirstElementChanged = currentState.firstElement !== lastFirstElement;
+    const hasLengthChanged = currentState.length !== lastSortedLength;
+    const hasFirstElementChanged = currentState.firstElement !== lastFirstElement;
 
-      if (hasLengthChanged || hasFirstElementChanged) {
-        console.log('Playlist changed, re-sorting...');
-        debouncedSortPlaylist();
-      }
+    if (hasLengthChanged || hasFirstElementChanged) {
+      console.log('Playlist changed, re-sorting...');
+      debouncedSortPlaylist();
     }
-  });
-
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true,
   });
 }
 

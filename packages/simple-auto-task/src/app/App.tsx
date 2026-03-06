@@ -1,5 +1,6 @@
 import $ from 'jquery';
-import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
+import { memo } from 'preact/compat';
+import { useCallback, useEffect, useMemo, useRef } from 'preact/hooks';
 
 import { MainPanel } from '../components/MainPanel';
 import { RulesPanel } from '../components/RulesPanel';
@@ -7,10 +8,20 @@ import { useConfigPersistence } from '../hooks/useConfigPersistence';
 import { useElementPicker } from '../hooks/useElementPicker';
 import { usePanelDrag } from '../hooks/usePanelDrag';
 import { useTaskRunner } from '../hooks/useTaskRunner';
-import { useStore } from '../stores/useStore';
+import {
+  editingRuleId,
+  highlightedRuleIndex,
+  highlightState,
+  isAutoRun,
+  isPicking,
+  isRunning,
+  selectorList,
+  status,
+  useStore,
+} from '../stores/useStore';
 import { ActionType, DEFAULT_CONFIG, PANEL_SPACING, StatusState, STORAGE_AUTORUN_KEY } from './constants';
 
-import type { ChangeEvent, MouseEvent } from 'react';
+import type { JSX } from 'preact';
 import type { Rule } from './types';
 
 const PickerClue = memo(() => {
@@ -22,22 +33,6 @@ const PickerClue = memo(() => {
 });
 
 export const App = memo(() => {
-  const addRule = useStore((s) => s.addRule);
-  const editingRuleId = useStore((s) => s.editingRuleId);
-  const highlightState = useStore((s) => s.highlightState);
-  const highlightedRuleIndex = useStore((s) => s.highlightedRuleIndex);
-  const isAutoRun = useStore((s) => s.isAutoRun);
-  const isPicking = useStore((s) => s.isPicking);
-  const isRunning = useStore((s) => s.isRunning);
-  const removeRule = useStore((s) => s.removeRule);
-  const selectorList = useStore((s) => s.selectorList);
-  const setIsAutoRun = useStore((s) => s.setIsAutoRun);
-  const setEditingRuleId = useStore((s) => s.setEditingRuleId);
-  const setIsRunning = useStore((s) => s.setIsRunning);
-  const setStatus = useStore((s) => s.setStatus);
-  const status = useStore((s) => s.status);
-  const updateRule = useStore((s) => s.updateRule);
-
   const panelContainerRef = useRef<HTMLDivElement | null>(null);
   const rulesPanelRef = useRef<HTMLDivElement | null>(null);
   const selectorInputRef = useRef<HTMLInputElement | null>(null);
@@ -66,11 +61,11 @@ export const App = memo(() => {
   }, []);
 
   const onTimeout = useCallback(() => {
-    setIsRunning(false);
+    useStore.setIsRunning(false);
     saveConfigNow();
     localStorage.setItem(STORAGE_AUTORUN_KEY, 'true');
     window.location.reload();
-  }, [saveConfigNow, setIsRunning]);
+  }, [saveConfigNow]);
 
   const { start: startRunner, stop: stopRunner } = useTaskRunner({
     cycleDelay: config.cycleDelay,
@@ -103,12 +98,12 @@ export const App = memo(() => {
   });
 
   const editingRule = useMemo(() => {
-    return editingRuleId !== null ? selectorList.find((r) => r.id === editingRuleId) || null : null;
-  }, [editingRuleId, selectorList]);
+    return editingRuleId.value !== null ? selectorList.value.find((r) => r.id === editingRuleId.value) || null : null;
+  }, [editingRuleId.value, selectorList.value]);
 
   const editingRuleIndex = useMemo(
-    () => (editingRuleId !== null ? selectorList.findIndex((r) => r.id === editingRuleId) : -1),
-    [editingRuleId, selectorList],
+    () => (editingRuleId.value !== null ? selectorList.value.findIndex((r) => r.id === editingRuleId.value) : -1),
+    [editingRuleId.value, selectorList.value],
   );
 
   const handleAddSelector = useCallback(() => {
@@ -118,7 +113,7 @@ export const App = memo(() => {
       return;
     }
 
-    addRule({
+    useStore.addRule({
       action: ActionType.CLICK,
       options: {
         ignoreWait: false,
@@ -130,18 +125,18 @@ export const App = memo(() => {
       selectorInputRef.current.value = '';
       selectorInputRef.current.focus();
     }
-  }, [addRule]);
+  }, []);
 
   const handleCloseRules = useCallback(() => {
     if (rulesPanelRef.current) {
       rulesPanelRef.current.style.display = 'none';
     }
-    setEditingRuleId(null);
-  }, [setEditingRuleId]);
+    useStore.setEditingRuleId(null);
+  }, []);
 
   const handleConfigChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      const { name, value } = event.target;
+    (event: JSX.TargetedEvent<HTMLInputElement>) => {
+      const { name, value } = event.currentTarget;
       const numericValue = parseInt(value, 10);
       if (!isNaN(numericValue)) {
         updateConfig({ [name]: numericValue });
@@ -151,29 +146,29 @@ export const App = memo(() => {
   );
 
   const handleListClick = useCallback(
-    (event: MouseEvent<HTMLDivElement>) => {
-      const target = (event.target as HTMLElement).closest('.selector-item-btn');
+    (event: MouseEvent) => {
+      const target = (event.target as HTMLElement).closest('.selector-item-btn') as HTMLElement;
       if (!target) {
         return;
       }
 
-      const ruleId = Number((target as HTMLElement).dataset.ruleId);
+      const ruleId = Number(target.dataset.ruleId);
       if (isNaN(ruleId)) {
         return;
       }
 
       if (target.classList.contains('selector-item-remove-btn')) {
-        if (editingRuleId === ruleId) {
+        if (editingRuleId.value === ruleId) {
           handleCloseRules();
         }
-        removeRule(ruleId);
+        useStore.removeRule(ruleId);
       } else if (target.classList.contains('selector-item-config-btn')) {
-        if (editingRuleId === ruleId) {
+        if (editingRuleId.value === ruleId) {
           handleCloseRules();
         } else {
-          const ruleToEdit = selectorList.find((r) => r.id === ruleId);
+          const ruleToEdit = selectorList.value.find((r) => r.id === ruleId);
           if (ruleToEdit) {
-            setEditingRuleId(ruleId);
+            useStore.setEditingRuleId(ruleId);
             if (rulesPanelRef.current && panelContainerRef.current) {
               const userPanelRect = panelContainerRef.current.getBoundingClientRect();
               rulesPanelRef.current.style.top = `${userPanelRect.top}px`;
@@ -185,7 +180,7 @@ export const App = memo(() => {
         }
       }
     },
-    [selectorList, removeRule, setEditingRuleId, editingRuleId, handleCloseRules],
+    [handleCloseRules],
   );
 
   const handleMainPanelPick = useCallback(() => {
@@ -244,10 +239,10 @@ export const App = memo(() => {
 
   const handleSaveRule = useCallback(
     (updatedRule: Rule) => {
-      updateRule(updatedRule);
+      useStore.updateRule(updatedRule);
       handleCloseRules();
     },
-    [handleCloseRules, updateRule],
+    [handleCloseRules],
   );
 
   const handleStart = useCallback(() => {
@@ -259,14 +254,13 @@ export const App = memo(() => {
   const handleStop = useCallback(() => {
     releaseWakeLock();
     stopRunner();
-    setIsAutoRun(false);
-    setStatus(StatusState.STOPPED);
+    useStore.setIsAutoRun(false);
+    useStore.setStatus(StatusState.STOPPED);
     localStorage.setItem(STORAGE_AUTORUN_KEY, 'false');
-  }, [stopRunner, setIsAutoRun, setStatus, releaseWakeLock]);
+  }, [stopRunner, releaseWakeLock]);
 
   useEffect(() => {
-    const isRunning = useStore.getState().isRunning;
-    if (isRunning) {
+    if (isRunning.value) {
       return;
     }
 
@@ -275,18 +269,16 @@ export const App = memo(() => {
       return;
     }
 
-    setIsAutoRun(true);
-    setStatus(StatusState.WAITING);
+    useStore.setIsAutoRun(true);
+    useStore.setStatus(StatusState.WAITING);
 
     const startWhenReady = () => {
-      const isAutoRun = useStore.getState().isAutoRun;
-      const isRunning = useStore.getState().isRunning;
-      if (!isAutoRun || isRunning) {
+      if (!isAutoRun.value || isRunning.value) {
         return;
       }
 
       startRunner();
-      setIsAutoRun(false);
+      useStore.setIsAutoRun(false);
     };
 
     if (document.readyState === 'complete') {
@@ -302,7 +294,7 @@ export const App = memo(() => {
         window.removeEventListener('load', onLoad);
       };
     }
-  }, [setIsAutoRun, setStatus, startRunner]);
+  }, [startRunner]);
 
   useEffect(() => {
     if (panelContainerRef.current && config.position) {
@@ -347,10 +339,10 @@ export const App = memo(() => {
         <MainPanel
           ref={panelContainerRef}
           cycleDelay={config.cycleDelay}
-          highlightState={highlightState}
-          highlightedRuleIndex={highlightedRuleIndex}
-          isAutoRun={isAutoRun}
-          isRunning={isRunning}
+          highlightState={highlightState.value}
+          highlightedRuleIndex={highlightedRuleIndex.value}
+          isAutoRun={isAutoRun.value}
+          isRunning={isRunning.value}
           onAddSelector={handleAddSelector}
           onConfigChange={handleConfigChange}
           onListClick={handleListClick}
@@ -359,8 +351,8 @@ export const App = memo(() => {
           onStop={handleStop}
           onTestSelector={handleMainPanelTestSelector}
           selectorInputRef={selectorInputRef}
-          selectorList={selectorList}
-          status={status}
+          selectorList={selectorList.value}
+          status={status.value}
           stepDelay={config.stepDelay}
           waitDelay={config.waitDelay}
         />
@@ -374,7 +366,7 @@ export const App = memo(() => {
           startPicking={startPicking}
         />
       </div>
-      {isPicking && <PickerClue />}
+      {isPicking.value && <PickerClue />}
     </>
   );
 });

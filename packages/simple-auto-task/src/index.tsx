@@ -1,14 +1,10 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
+import { render } from 'preact';
 
 import { App } from './app/App';
 import { STORAGE_AUTORUN_KEY, STORAGE_CONFIG_KEY } from './app/constants';
 import { APP_STYLES, GLOBAL_STYLES } from './app/styles';
 
-import type { Root } from 'react-dom/client';
-
 const ROOT_ELEMENT_ID = 'sat-root';
-let reactRoot: Root | null = null;
 
 function injectGlobalStyles(): void {
   const styleId = 'sat-global-styles';
@@ -52,20 +48,9 @@ function initializePanel(): void {
     appContainer = document.createElement('div');
     appContainer.id = 'app-container';
     shadowRoot.appendChild(appContainer);
-
-    if (reactRoot) {
-      reactRoot.unmount();
-    }
-    reactRoot = createRoot(appContainer);
-  } else if (!reactRoot) {
-    reactRoot = createRoot(appContainer);
   }
 
-  reactRoot.render(
-    <StrictMode>
-      <App />
-    </StrictMode>,
-  );
+  render(<App />, appContainer);
 }
 
 function main(): void {
@@ -104,11 +89,6 @@ function main(): void {
 
     if (!document.body || !currentRootElement || !document.body.contains(currentRootElement)) {
       console.warn('Root element has been removed from DOM. Re-injecting...');
-
-      if (reactRoot) {
-        reactRoot.unmount();
-        reactRoot = null;
-      }
 
       if (currentRootElement) {
         currentRootElement.remove();

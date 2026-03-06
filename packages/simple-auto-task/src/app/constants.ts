@@ -22,7 +22,7 @@ export const DEFAULT_CONFIG: Config = {
   selectors: [],
   stepDelay: 150,
   waitDelay: 5000,
-};
+} as const;
 
 export const HIGHLIGHT_BG_COLORS = {
   idle: '',

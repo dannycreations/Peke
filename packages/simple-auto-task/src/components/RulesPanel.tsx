@@ -1,8 +1,9 @@
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { memo } from 'preact/compat';
+import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 
 import { ActionType as ActionTypeConst } from '../app/constants';
 
-import type { KeyboardEvent, RefObject } from 'react';
+import type { RefObject } from 'preact';
 import type { ActionType, DeleteActionType, Rule } from '../app/types';
 
 interface RulesPanelProps {
@@ -11,11 +12,11 @@ interface RulesPanelProps {
   readonly onCloseRules: () => void;
   readonly onSaveRule: (rule: Rule) => void;
   readonly onTestSelector: (selector: string, inputEl: HTMLInputElement | null) => void;
-  readonly rulesPanelRef: RefObject<HTMLDivElement | null>;
+  readonly rulesPanelRef: RefObject<HTMLDivElement>;
   readonly startPicking: (onElementPicked: (selector: string) => void) => void;
 }
 
-const handleKeyDown = (event: KeyboardEvent<HTMLInputElement | HTMLSelectElement>): void => {
+const handleKeyDown = (event: KeyboardEvent): void => {
   event.stopPropagation();
 };
 
@@ -116,7 +117,7 @@ export const RulesPanel = memo<RulesPanelProps>(
               style={{ marginBottom: '4px' }}
               type="text"
               value={selector}
-              onChange={(e) => setSelector(e.target.value)}
+              onInput={(e) => setSelector(e.currentTarget.value)}
               onKeyDown={handleKeyDown}
             />
             <div className="btn-group">
@@ -135,7 +136,7 @@ export const RulesPanel = memo<RulesPanelProps>(
               id="rules-panel-action"
               className="panel-select"
               value={action}
-              onChange={(e) => setAction(e.target.value as ActionType)}
+              onChange={(e) => setAction(e.currentTarget.value as ActionType)}
               onKeyDown={handleKeyDown}
             >
               <option value={ActionTypeConst.CLICK}>Click Element</option>
@@ -152,7 +153,7 @@ export const RulesPanel = memo<RulesPanelProps>(
                   id="rules-panel-delete-type"
                   className="panel-select"
                   value={deleteActionType}
-                  onChange={(e) => setDeleteActionType(e.target.value as DeleteActionType)}
+                  onChange={(e) => setDeleteActionType(e.currentTarget.value as DeleteActionType)}
                   onKeyDown={handleKeyDown}
                 >
                   <option value="self">Delete Self</option>
@@ -171,7 +172,7 @@ export const RulesPanel = memo<RulesPanelProps>(
                     type="text"
                     value={parentSelector}
                     placeholder="e.g., .card, #container"
-                    onChange={(e) => setParentSelector(e.target.value)}
+                    onInput={(e) => setParentSelector(e.currentTarget.value)}
                     onKeyDown={handleKeyDown}
                   />
                   <div className="btn-group">
@@ -200,7 +201,7 @@ export const RulesPanel = memo<RulesPanelProps>(
                     type="text"
                     value={customSelector}
                     placeholder="e.g., .ad-banner"
-                    onChange={(e) => setCustomSelector(e.target.value)}
+                    onInput={(e) => setCustomSelector(e.currentTarget.value)}
                     onKeyDown={handleKeyDown}
                   />
                   <div className="btn-group">
@@ -224,7 +225,7 @@ export const RulesPanel = memo<RulesPanelProps>(
           <label className="panel-label switch-label">
             <span>Ignore wait</span>
             <div className="switch">
-              <input id="rules-ignore-wait-checkbox" type="checkbox" checked={ignoreWait} onChange={(e) => setIgnoreWait(e.target.checked)} />
+              <input id="rules-ignore-wait-checkbox" type="checkbox" checked={ignoreWait} onChange={(e) => setIgnoreWait(e.currentTarget.checked)} />
               <span className="switch-slider"></span>
             </div>
           </label>

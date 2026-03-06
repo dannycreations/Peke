@@ -1,8 +1,8 @@
 import { debounce } from 'es-toolkit';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'preact/hooks';
 
 import { DEFAULT_CONFIG, STORAGE_CONFIG_KEY } from '../app/constants';
-import { useStore } from '../stores/useStore';
+import { selectorList, useStore } from '../stores/useStore';
 
 import type { Config, Position } from '../app/types';
 
@@ -16,8 +16,6 @@ interface UseConfigPersistenceReturn {
 
 export const useConfigPersistence = (): UseConfigPersistenceReturn => {
   const [partialConfig, setPartialConfig] = useState<PartialConfig>(DEFAULT_CONFIG);
-  const selectorList = useStore((state) => state.selectorList);
-  const setSelectorList = useStore((state) => state.setSelectorList);
 
   useEffect(() => {
     let loadedConfig = { ...DEFAULT_CONFIG };
@@ -40,7 +38,7 @@ export const useConfigPersistence = (): UseConfigPersistenceReturn => {
       console.warn('Failed to load config from localStorage.', error);
     }
 
-    setSelectorList(loadedConfig.selectors);
+    useStore.setSelectorList(loadedConfig.selectors);
     setPartialConfig({
       visible: loadedConfig.visible,
       cycleDelay: loadedConfig.cycleDelay,
@@ -48,14 +46,14 @@ export const useConfigPersistence = (): UseConfigPersistenceReturn => {
       stepDelay: loadedConfig.stepDelay,
       waitDelay: loadedConfig.waitDelay,
     });
-  }, [setSelectorList]);
+  }, []);
 
   const config = useMemo<Config>(
     () => ({
       ...partialConfig,
-      selectors: selectorList,
+      selectors: selectorList.value,
     }),
-    [partialConfig, selectorList],
+    [partialConfig, selectorList.value],
   );
 
   const saveConfig = useCallback((configToSave: Config) => {

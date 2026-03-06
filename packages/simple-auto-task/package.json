@@ -18,18 +18,14 @@
   },
   "homepage": "https://github.com/dannycreations/Peke",
   "dependencies": {
+    "@preact/signals": "^2.8.1",
     "jquery": "^4.0.0",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "valibot": "^1.2.0",
-    "zustand": "^5.0.11"
+    "preact": "^10.28.4"
   },
   "devDependencies": {
+    "@preact/preset-vite": "^2.10.3",
     "@tailwindcss/vite": "^4.2.1",
     "@types/jquery": "^4.0.0",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.4",
     "tailwindcss": "^4.2.1"
   }
 }

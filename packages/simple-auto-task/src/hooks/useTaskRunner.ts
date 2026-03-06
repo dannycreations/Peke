@@ -1,9 +1,9 @@
 import { delay } from 'es-toolkit';
 import $ from 'jquery';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'preact/hooks';
 
 import { ActionType, HighlightState, StatusState, STORAGE_AUTORUN_KEY } from '../app/constants';
-import { useStore } from '../stores/useStore';
+import { isRunning, selectorList, useStore } from '../stores/useStore';
 
 import type { Config, Rule } from '../app/types';
 
@@ -20,60 +20,49 @@ interface UseTaskRunnerReturn {
 }
 
 export const useTaskRunner = ({ cycleDelay, stepDelay, waitDelay, onTimeout }: UseTaskRunnerProps): UseTaskRunnerReturn => {
-  const isRunning = useStore((state) => state.isRunning);
-  const selectorList = useStore((state) => state.selectorList);
-  const setHighlightState = useStore((state) => state.setHighlightState);
-  const setHighlightedRuleIndex = useStore((state) => state.setHighlightedRuleIndex);
-  const setIsRunning = useStore((state) => state.setIsRunning);
-  const setStatus = useStore((state) => state.setStatus);
-  const setIsAutoRun = useStore((state) => state.setIsAutoRun);
-
   const delaysRef = useRef<Pick<Config, 'stepDelay' | 'waitDelay' | 'cycleDelay'>>({ stepDelay, waitDelay, cycleDelay });
 
   useEffect(() => {
     delaysRef.current = { stepDelay, waitDelay, cycleDelay };
   }, [stepDelay, waitDelay, cycleDelay]);
 
-  const executeRuleAction = useCallback(
-    (rule: Rule) => {
-      if (rule.action === ActionType.STOP) {
-        setIsRunning(false);
-        setIsAutoRun(false);
-        setStatus(StatusState.STOPPED);
-        localStorage.setItem(STORAGE_AUTORUN_KEY, 'false');
-        return;
-      }
+  const executeRuleAction = useCallback((rule: Rule) => {
+    if (rule.action === ActionType.STOP) {
+      useStore.setIsRunning(false);
+      useStore.setIsAutoRun(false);
+      useStore.setStatus(StatusState.STOPPED);
+      localStorage.setItem(STORAGE_AUTORUN_KEY, 'false');
+      return;
+    }
 
-      const element = $(rule.selector).first();
-      if (element.length === 0) {
-        return;
-      }
+    const element = $(rule.selector).first();
+    if (element.length === 0) {
+      return;
+    }
 
-      switch (rule.action) {
-        case ActionType.CLICK: {
-          element[0].scrollIntoView({
-            block: 'center',
+    switch (rule.action) {
+      case ActionType.CLICK: {
+        element[0].scrollIntoView({
+          block: 'center',
+        });
+        element.trigger('click');
+        break;
+      }
+      case ActionType.DELETE: {
+        const { customSelector, deleteActionType, parentSelector } = rule.options;
+        if (deleteActionType === 'self') {
+          element.remove();
+        } else if (deleteActionType === 'parent' && parentSelector) {
+          element.closest(parentSelector)?.remove();
+        } else if (deleteActionType === 'custom' && customSelector) {
+          $(customSelector).each((_: number, el: HTMLElement) => {
+            $(el).remove();
           });
-          element.trigger('click');
-          break;
         }
-        case ActionType.DELETE: {
-          const { customSelector, deleteActionType, parentSelector } = rule.options;
-          if (deleteActionType === 'self') {
-            element.remove();
-          } else if (deleteActionType === 'parent' && parentSelector) {
-            element.closest(parentSelector)?.remove();
-          } else if (deleteActionType === 'custom' && customSelector) {
-            $(customSelector).each((_: number, el: HTMLElement) => {
-              $(el).remove();
-            });
-          }
-          break;
-        }
+        break;
       }
-    },
-    [setIsAutoRun, setIsRunning, setStatus],
-  );
+    }
+  }, []);
 
   const waitForElement = useCallback(async (rule: Rule, timeoutMs: number): Promise<boolean> => {
     if ($(rule.selector).length > 0) {
@@ -106,25 +95,25 @@ export const useTaskRunner = ({ cycleDelay, stepDelay, waitDelay, onTimeout }: U
   }, []);
 
   const runCycle = useCallback(async () => {
-    while (useStore.getState().isRunning) {
-      for (const [index, rule] of useStore.getState().selectorList.entries()) {
-        if (!useStore.getState().isRunning) {
+    while (isRunning.value) {
+      for (const [index, rule] of selectorList.value.entries()) {
+        if (!isRunning.value) {
           return;
         }
 
-        setHighlightedRuleIndex(index);
-        setHighlightState(HighlightState.WAITING);
+        useStore.setHighlightedRuleIndex(index);
+        useStore.setHighlightState(HighlightState.WAITING);
 
         const timeoutMs: number = delaysRef.current.waitDelay;
         const elementFound: boolean = await waitForElement(rule, timeoutMs);
 
-        if (!useStore.getState().isRunning) {
+        if (!isRunning.value) {
           return;
         }
 
         if (elementFound) {
           executeRuleAction(rule);
-          setHighlightState(HighlightState.SUCCESS);
+          useStore.setHighlightState(HighlightState.SUCCESS);
         } else if (!rule.options.ignoreWait) {
           onTimeout();
           return;
@@ -134,37 +123,37 @@ export const useTaskRunner = ({ cycleDelay, stepDelay, waitDelay, onTimeout }: U
           await delay(delaysRef.current.stepDelay);
         }
 
-        setHighlightState(HighlightState.IDLE);
-        setHighlightedRuleIndex(null);
+        useStore.setHighlightState(HighlightState.IDLE);
+        useStore.setHighlightedRuleIndex(null);
       }
 
-      if (useStore.getState().isRunning) {
+      if (isRunning.value) {
         await delay(delaysRef.current.cycleDelay);
       }
     }
-  }, [executeRuleAction, onTimeout, setHighlightState, setHighlightedRuleIndex, waitForElement]);
+  }, [executeRuleAction, onTimeout, waitForElement]);
 
   const start = useCallback(() => {
-    if (selectorList.length === 0 || isRunning) {
+    if (selectorList.value.length === 0 || isRunning.value) {
       return;
     }
 
-    setIsRunning(true);
-    setStatus(StatusState.RUNNING);
-  }, [isRunning, selectorList.length, setIsRunning, setStatus]);
+    useStore.setIsRunning(true);
+    useStore.setStatus(StatusState.RUNNING);
+  }, []);
 
   const stop = useCallback(() => {
-    if (!isRunning) {
+    if (!isRunning.value) {
       return;
     }
 
-    setIsRunning(false);
-    setStatus(StatusState.STOPPED);
-  }, [isRunning, setIsRunning, setStatus]);
+    useStore.setIsRunning(false);
+    useStore.setStatus(StatusState.STOPPED);
+  }, []);
 
   useEffect(() => {
     let isCancelled: boolean = false;
-    if (isRunning) {
+    if (isRunning.value) {
       const cycle = async (): Promise<void> => {
         if (!isCancelled) {
           await runCycle();
@@ -175,7 +164,7 @@ export const useTaskRunner = ({ cycleDelay, stepDelay, waitDelay, onTimeout }: U
     return () => {
       isCancelled = true;
     };
-  }, [isRunning, runCycle]);
+  }, [isRunning.value, runCycle]);
 
   return { start, stop };
 };

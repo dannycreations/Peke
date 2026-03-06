@@ -1,12 +1,12 @@
 import { noop } from 'es-toolkit';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'preact/hooks';
 
-import type { RefObject } from 'react';
+import type { RefObject } from 'preact';
 
 interface UsePanelDragProps {
-  readonly mainPanelRef: RefObject<HTMLDivElement | null>;
+  readonly mainPanelRef: RefObject<HTMLDivElement>;
   readonly onDragEnd: () => void;
-  readonly rulesPanelRef: RefObject<HTMLDivElement | null>;
+  readonly rulesPanelRef: RefObject<HTMLDivElement>;
 }
 
 export const usePanelDrag = ({ mainPanelRef, rulesPanelRef, onDragEnd }: UsePanelDragProps): void => {

@@ -1,0 +1,29 @@
+{
+  "name": "openai-chatgpt",
+  "version": "0.0.1",
+  "author": "dannycreations",
+  "license": "GPL",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest",
+    "update": "npm-check-updates -u"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dannycreations/Peke.git",
+    "directory": "packages/openai-chatgpt"
+  },
+  "homepage": "https://github.com/dannycreations/Peke",
+  "dependencies": {
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "zustand": "^5.0.11"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.4"
+  }
+}

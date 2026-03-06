@@ -2,7 +2,7 @@ import { debounce } from 'es-toolkit';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { DEFAULT_CONFIG, STORAGE_CONFIG_KEY } from '../app/constants';
-import { useAppStore } from '../stores/appStore';
+import { useStore } from '../stores/useStore';
 
 import type { Config, Position } from '../app/types';
 
@@ -16,8 +16,8 @@ interface UseConfigPersistenceReturn {
 
 export const useConfigPersistence = (): UseConfigPersistenceReturn => {
   const [partialConfig, setPartialConfig] = useState<PartialConfig>(DEFAULT_CONFIG);
-  const selectorList = useAppStore((state) => state.selectorList);
-  const setSelectorList = useAppStore((state) => state.setSelectorList);
+  const selectorList = useStore((state) => state.selectorList);
+  const setSelectorList = useStore((state) => state.setSelectorList);
 
   useEffect(() => {
     let loadedConfig = { ...DEFAULT_CONFIG };

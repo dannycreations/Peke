@@ -7,7 +7,7 @@ import { useConfigPersistence } from '../hooks/useConfigPersistence';
 import { useElementPicker } from '../hooks/useElementPicker';
 import { usePanelDrag } from '../hooks/usePanelDrag';
 import { useTaskRunner } from '../hooks/useTaskRunner';
-import { useAppStore } from '../stores/appStore';
+import { useStore } from '../stores/useStore';
 import { ActionType, DEFAULT_CONFIG, PANEL_SPACING, StatusState, STORAGE_AUTORUN_KEY } from './constants';
 
 import type { ChangeEvent, MouseEvent } from 'react';
@@ -22,21 +22,21 @@ const PickerClue = memo(() => {
 });
 
 export const App = memo(() => {
-  const addRule = useAppStore((s) => s.addRule);
-  const editingRuleId = useAppStore((s) => s.editingRuleId);
-  const highlightState = useAppStore((s) => s.highlightState);
-  const highlightedRuleIndex = useAppStore((s) => s.highlightedRuleIndex);
-  const isAutoRun = useAppStore((s) => s.isAutoRun);
-  const isPicking = useAppStore((s) => s.isPicking);
-  const isRunning = useAppStore((s) => s.isRunning);
-  const removeRule = useAppStore((s) => s.removeRule);
-  const selectorList = useAppStore((s) => s.selectorList);
-  const setIsAutoRun = useAppStore((s) => s.setIsAutoRun);
-  const setEditingRuleId = useAppStore((s) => s.setEditingRuleId);
-  const setIsRunning = useAppStore((s) => s.setIsRunning);
-  const setStatus = useAppStore((s) => s.setStatus);
-  const status = useAppStore((s) => s.status);
-  const updateRule = useAppStore((s) => s.updateRule);
+  const addRule = useStore((s) => s.addRule);
+  const editingRuleId = useStore((s) => s.editingRuleId);
+  const highlightState = useStore((s) => s.highlightState);
+  const highlightedRuleIndex = useStore((s) => s.highlightedRuleIndex);
+  const isAutoRun = useStore((s) => s.isAutoRun);
+  const isPicking = useStore((s) => s.isPicking);
+  const isRunning = useStore((s) => s.isRunning);
+  const removeRule = useStore((s) => s.removeRule);
+  const selectorList = useStore((s) => s.selectorList);
+  const setIsAutoRun = useStore((s) => s.setIsAutoRun);
+  const setEditingRuleId = useStore((s) => s.setEditingRuleId);
+  const setIsRunning = useStore((s) => s.setIsRunning);
+  const setStatus = useStore((s) => s.setStatus);
+  const status = useStore((s) => s.status);
+  const updateRule = useStore((s) => s.updateRule);
 
   const panelContainerRef = useRef<HTMLDivElement | null>(null);
   const rulesPanelRef = useRef<HTMLDivElement | null>(null);
@@ -265,7 +265,7 @@ export const App = memo(() => {
   }, [stopRunner, setIsAutoRun, setStatus, releaseWakeLock]);
 
   useEffect(() => {
-    const isRunning = useAppStore.getState().isRunning;
+    const isRunning = useStore.getState().isRunning;
     if (isRunning) {
       return;
     }
@@ -279,8 +279,8 @@ export const App = memo(() => {
     setStatus(StatusState.WAITING);
 
     const startWhenReady = () => {
-      const isAutoRun = useAppStore.getState().isAutoRun;
-      const isRunning = useAppStore.getState().isRunning;
+      const isAutoRun = useStore.getState().isAutoRun;
+      const isRunning = useStore.getState().isRunning;
       if (!isAutoRun || isRunning) {
         return;
       }

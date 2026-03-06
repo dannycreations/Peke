@@ -3,7 +3,7 @@ import $ from 'jquery';
 import { useCallback, useEffect, useRef } from 'react';
 
 import { ActionType, HighlightState, StatusState, STORAGE_AUTORUN_KEY } from '../app/constants';
-import { useAppStore } from '../stores/appStore';
+import { useStore } from '../stores/useStore';
 
 import type { Config, Rule } from '../app/types';
 
@@ -20,13 +20,13 @@ interface UseTaskRunnerReturn {
 }
 
 export const useTaskRunner = ({ cycleDelay, stepDelay, waitDelay, onTimeout }: UseTaskRunnerProps): UseTaskRunnerReturn => {
-  const isRunning = useAppStore((state) => state.isRunning);
-  const selectorList = useAppStore((state) => state.selectorList);
-  const setHighlightState = useAppStore((state) => state.setHighlightState);
-  const setHighlightedRuleIndex = useAppStore((state) => state.setHighlightedRuleIndex);
-  const setIsRunning = useAppStore((state) => state.setIsRunning);
-  const setStatus = useAppStore((state) => state.setStatus);
-  const setIsAutoRun = useAppStore((state) => state.setIsAutoRun);
+  const isRunning = useStore((state) => state.isRunning);
+  const selectorList = useStore((state) => state.selectorList);
+  const setHighlightState = useStore((state) => state.setHighlightState);
+  const setHighlightedRuleIndex = useStore((state) => state.setHighlightedRuleIndex);
+  const setIsRunning = useStore((state) => state.setIsRunning);
+  const setStatus = useStore((state) => state.setStatus);
+  const setIsAutoRun = useStore((state) => state.setIsAutoRun);
 
   const delaysRef = useRef<Pick<Config, 'stepDelay' | 'waitDelay' | 'cycleDelay'>>({ stepDelay, waitDelay, cycleDelay });
 
@@ -106,9 +106,9 @@ export const useTaskRunner = ({ cycleDelay, stepDelay, waitDelay, onTimeout }: U
   }, []);
 
   const runCycle = useCallback(async () => {
-    while (useAppStore.getState().isRunning) {
-      for (const [index, rule] of useAppStore.getState().selectorList.entries()) {
-        if (!useAppStore.getState().isRunning) {
+    while (useStore.getState().isRunning) {
+      for (const [index, rule] of useStore.getState().selectorList.entries()) {
+        if (!useStore.getState().isRunning) {
           return;
         }
 
@@ -118,7 +118,7 @@ export const useTaskRunner = ({ cycleDelay, stepDelay, waitDelay, onTimeout }: U
         const timeoutMs: number = delaysRef.current.waitDelay;
         const elementFound: boolean = await waitForElement(rule, timeoutMs);
 
-        if (!useAppStore.getState().isRunning) {
+        if (!useStore.getState().isRunning) {
           return;
         }
 
@@ -138,7 +138,7 @@ export const useTaskRunner = ({ cycleDelay, stepDelay, waitDelay, onTimeout }: U
         setHighlightedRuleIndex(null);
       }
 
-      if (useAppStore.getState().isRunning) {
+      if (useStore.getState().isRunning) {
         await delay(delaysRef.current.cycleDelay);
       }
     }

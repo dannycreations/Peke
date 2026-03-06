@@ -12,6 +12,7 @@
     "outDir": "dist",
     "declaration": true,
     "noEmit": false,
+    "jsx": "react-jsx",
 
     "experimentalDecorators": true,
     "useDefineForClassFields": false,

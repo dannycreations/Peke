@@ -1,0 +1,5 @@
+{
+  "name": "OpenAI ChatGPT Tweak",
+  "icon": "https://www.google.com/s2/favicons?sz=64&domain=chatgpt.com",
+  "match": ["*://chatgpt.com/*"]
+}

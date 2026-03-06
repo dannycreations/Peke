@@ -28,6 +28,19 @@
       "name": "google-ytm",
       "version": "0.0.1",
     },
+    "packages/openai-chatgpt": {
+      "name": "openai-chatgpt",
+      "version": "0.0.1",
+      "dependencies": {
+        "react": "^19.2.4",
+        "react-dom": "^19.2.4",
+      },
+      "devDependencies": {
+        "@types/react": "^19.2.14",
+        "@types/react-dom": "^19.2.3",
+        "@vitejs/plugin-react": "^5.1.4",
+      },
+    },
     "packages/simple-auto-task": {
       "name": "simple-auto-task",
       "version": "0.0.5",
@@ -49,7 +62,7 @@
     },
     "packages/simple-fake-focus": {
       "name": "simple-fake-focus",
-      "version": "0.0.2",
+      "version": "0.0.3",
     },
   },
   "packages": {
@@ -504,6 +517,8 @@
     "npm-run-path": ["npm-run-path@6.0.0", "", { "dependencies": { "path-key": "^4.0.0", "unicorn-magic": "^0.3.0" } }, "sha512-9qny7Z9DsQU8Ou39ERsPU4OZQlSTP47ShQzuKZ6PRXpYLtIFgl/DEBYEXKlvcEa+9tHVcK8CF81Y2V72qaZhWA=="],
 
     "obug": ["obug@2.1.1", "", {}, "sha512-uTqF9MuPraAQ+IsnPf366RG4cP9RtUi7MLO1N3KEc+wb0a6yKpeL0lmk2IB1jY5KHPAlTc6T/JRdC/YqxHNwkQ=="],
+
+    "openai-chatgpt": ["openai-chatgpt@workspace:packages/openai-chatgpt"],
 
     "outdent": ["outdent@0.5.0", "", {}, "sha512-/jHxFIzoMXdqPzTaCpFzAAWhpkSjZPF4Vsn6jAfNpmbH/ymsmd7Qc6VE9BGn0L6YMj6uwpQLxCECpus4ukKS9Q=="],
 

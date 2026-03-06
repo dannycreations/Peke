@@ -47,9 +47,9 @@ const initialState: AppState = {
   lastHoveredElement: null,
   selectorList: [],
   status: StatusStateConst.IDLE,
-};
+} as const;
 
-export const useAppStore = create<AppState & AppActions>((set) => ({
+export const useStore = create<AppState & AppActions>((set) => ({
   ...initialState,
 
   addRule: (newRuleData) => {

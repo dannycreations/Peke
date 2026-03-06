@@ -1,15 +1,4 @@
 /**
- * Defines configuration options for the {@link runOnDynamic} function.
- */
-export interface DynamicOptions {
-  /**
-   * A CSS selector to filter which added nodes trigger the callback.
-   * If omitted, the callback runs for any added `HTMLElement`.
-   */
-  readonly selector?: string;
-}
-
-/**
  * Executes a callback function immediately.
  *
  * @example
@@ -71,6 +60,17 @@ export function runOnComplete(callback: () => unknown): void {
 }
 
 /**
+ * Defines configuration options for the {@link runOnDynamic} function.
+ */
+export interface DynamicOptions {
+  /**
+   * A CSS selector to filter which added nodes trigger the callback.
+   * If omitted, the callback runs for any added `HTMLElement`.
+   */
+  readonly selector?: string;
+}
+
+/**
  * Executes a callback whenever new nodes are added to the document's body.
  * This is useful for scripts that need to act on dynamically added content.
  *
@@ -93,7 +93,7 @@ export function runOnComplete(callback: () => unknown): void {
  * @returns {void}
  */
 export function runOnDynamic(callback: () => unknown, options: DynamicOptions = {}): void {
-  const observer = new MutationObserver((mutations) => {
+  runOnObserver((mutations) => {
     for (const mutation of mutations) {
       if (mutation.addedNodes.length === 0) {
         continue;
@@ -110,14 +110,27 @@ export function runOnDynamic(callback: () => unknown, options: DynamicOptions = 
       });
     }
   });
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true,
-  });
 }
 
 /**
- * Executes a callback with mutation records whenever the document's body changes.
+ * Defines configuration options for the {@link runOnObserver} function.
+ */
+export interface ObserverOptions {
+  /**
+   * The DOM node to observe for mutations.
+   * If omitted, `document.body` is used as the default target.
+   */
+  readonly target?: Node;
+
+  /**
+   * Configuration options for the `MutationObserver`.
+   * These options extend the default configuration: `{ childList: true, subtree: true }`.
+   */
+  readonly options?: MutationObserverInit;
+}
+
+/**
+ * Executes a callback with mutation records whenever changes occur within the specified DOM subtree.
  * This provides a low-level interface to the `MutationObserver` API.
  *
  * @example
@@ -132,12 +145,12 @@ export function runOnDynamic(callback: () => unknown, options: DynamicOptions = 
  * ```
  *
  * @param {(mutations: MutationRecord[]) => unknown} callback The function to execute with the mutation records.
+ * @param {ObserverOptions=} [initOptions={}] Configuration options, such as the target node and observer settings.
+ *   See {@link ObserverOptions}.
  * @returns {void}
  */
-export function runOnObserver(callback: (mutations: MutationRecord[]) => unknown): void {
+export function runOnObserver(callback: (mutations: MutationRecord[]) => unknown, initOptions: ObserverOptions = {}): void {
+  const { target = document.body, options = {} } = initOptions;
   const observer = new MutationObserver(callback);
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true,
-  });
+  observer.observe(target, { childList: true, subtree: true, ...options });
 }

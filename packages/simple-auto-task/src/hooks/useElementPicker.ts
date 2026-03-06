@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 
-import { useAppStore } from '../stores/appStore';
-import { generateSelector } from '../utils/utils';
+import { useStore } from '../stores/useStore';
+import { generateSelector } from '../utilities/dom';
 
 import type { RefObject } from 'react';
 
@@ -15,14 +15,14 @@ interface UseElementPickerReturn {
 }
 
 export const useElementPicker = ({ panelContainerRef, rulesPanelRef }: UseElementPickerProps): UseElementPickerReturn => {
-  const isPicking = useAppStore((state) => state.isPicking);
-  const setIsPicking = useAppStore((state) => state.setIsPicking);
-  const setLastHoveredElement = useAppStore((state) => state.setLastHoveredElement);
+  const isPicking = useStore((state) => state.isPicking);
+  const setIsPicking = useStore((state) => state.setIsPicking);
+  const setLastHoveredElement = useStore((state) => state.setLastHoveredElement);
   const onElementPickedRef = useRef<(selector: string) => void>(() => {});
 
   const startPicking = useCallback(
     (onElementPicked: (selector: string) => void) => {
-      const { isPicking: currentIsPicking, isRunning } = useAppStore.getState();
+      const { isPicking: currentIsPicking, isRunning } = useStore.getState();
       if (isRunning || currentIsPicking) return;
       onElementPickedRef.current = onElementPicked;
       setIsPicking(true);
@@ -45,7 +45,7 @@ export const useElementPicker = ({ panelContainerRef, rulesPanelRef }: UseElemen
       }
 
       if (panelContainerRef.current?.contains(target) || rulesPanelRef.current?.contains(target)) {
-        const { lastHoveredElement } = useAppStore.getState();
+        const { lastHoveredElement } = useStore.getState();
         if (lastHoveredElement) {
           lastHoveredElement.classList.remove('highlight-pick');
           setLastHoveredElement(null);
@@ -53,7 +53,7 @@ export const useElementPicker = ({ panelContainerRef, rulesPanelRef }: UseElemen
         return;
       }
 
-      const { lastHoveredElement } = useAppStore.getState();
+      const { lastHoveredElement } = useStore.getState();
       if (target === lastHoveredElement) {
         return;
       }
@@ -106,7 +106,7 @@ export const useElementPicker = ({ panelContainerRef, rulesPanelRef }: UseElemen
         if (event.type === 'keydown' && !isPaused) {
           isPaused = true;
           document.body.style.cursor = 'default';
-          const { lastHoveredElement } = useAppStore.getState();
+          const { lastHoveredElement } = useStore.getState();
           if (lastHoveredElement) {
             lastHoveredElement.classList.remove('highlight-pick');
             setLastHoveredElement(null);
@@ -133,7 +133,7 @@ export const useElementPicker = ({ panelContainerRef, rulesPanelRef }: UseElemen
       panelContainerRef.current?.classList.remove('picking-mode-panel');
       rulesPanelRef.current?.classList.remove('picking-mode-panel');
       document.body.style.cursor = 'default';
-      const { lastHoveredElement } = useAppStore.getState();
+      const { lastHoveredElement } = useStore.getState();
       if (lastHoveredElement) {
         lastHoveredElement.classList.remove('highlight-pick');
         setLastHoveredElement(null);

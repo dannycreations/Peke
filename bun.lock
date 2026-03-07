@@ -26,11 +26,11 @@
     },
     "packages/google-ytm": {
       "name": "google-ytm",
-      "version": "0.0.1",
+      "version": "0.0.2",
     },
     "packages/openai-chatgpt": {
       "name": "openai-chatgpt",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "dependencies": {
         "@preact/signals": "^2.8.1",
         "preact": "^10.28.4",
@@ -41,7 +41,7 @@
     },
     "packages/simple-auto-task": {
       "name": "simple-auto-task",
-      "version": "0.0.5",
+      "version": "0.0.6",
       "dependencies": {
         "@preact/signals": "^2.8.1",
         "jquery": "^4.0.0",
@@ -51,12 +51,11 @@
         "@preact/preset-vite": "^2.10.3",
         "@tailwindcss/vite": "^4.2.1",
         "@types/jquery": "^4.0.0",
-        "tailwindcss": "^4.2.1",
       },
     },
     "packages/simple-fake-focus": {
       "name": "simple-fake-focus",
-      "version": "0.0.3",
+      "version": "0.0.4",
     },
   },
   "packages": {

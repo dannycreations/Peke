@@ -1,6 +1,6 @@
 {
   "name": "simple-auto-task",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "author": "dannycreations",
   "license": "GPL",
   "type": "module",
@@ -25,7 +25,6 @@
   "devDependencies": {
     "@preact/preset-vite": "^2.10.3",
     "@tailwindcss/vite": "^4.2.1",
-    "@types/jquery": "^4.0.0",
-    "tailwindcss": "^4.2.1"
+    "@types/jquery": "^4.0.0"
   }
 }

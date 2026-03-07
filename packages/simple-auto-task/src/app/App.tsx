@@ -337,7 +337,7 @@ export const App = memo(() => {
     <>
       <div style={{ visibility: config.visible ? 'visible' : 'hidden', pointerEvents: config.visible ? 'auto' : 'none' }}>
         <MainPanel
-          ref={panelContainerRef}
+          mainPanelRef={panelContainerRef}
           cycleDelay={config.cycleDelay}
           highlightState={highlightState.value}
           highlightedRuleIndex={highlightedRuleIndex.value}

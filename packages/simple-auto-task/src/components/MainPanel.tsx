@@ -24,7 +24,7 @@ interface MainPanelProps {
   readonly status: StatusState;
   readonly stepDelay: number;
   readonly waitDelay: number;
-  readonly ref?: RefObject<HTMLDivElement>;
+  readonly mainPanelRef?: RefObject<HTMLDivElement>;
 }
 
 interface DelayConfig {
@@ -59,7 +59,7 @@ export const MainPanel = memo<MainPanelProps>(
     status,
     stepDelay,
     waitDelay,
-    ref,
+    mainPanelRef,
   }) => {
     const listDisplayRef = useRef<HTMLDivElement | null>(null);
 
@@ -82,7 +82,7 @@ export const MainPanel = memo<MainPanelProps>(
     );
 
     return (
-      <div id="panel-container" ref={ref}>
+      <div id="panel-container" ref={mainPanelRef}>
         <div id="panel-header" className="panel-header">
           <span>Simple Auto Task</span>
           <span id="status-indicator">

@@ -1,3 +1,4 @@
+import { useStorage } from '@/hooks/useStorage';
 import $ from 'jquery';
 import { memo } from 'preact/compat';
 import { useCallback, useEffect, useMemo, useRef } from 'preact/hooks';
@@ -21,7 +22,7 @@ import {
 } from '../stores/useStore';
 import { ActionType, DEFAULT_CONFIG, PANEL_SPACING, StatusState, STORAGE_AUTORUN_KEY } from './constants';
 
-import type { JSX } from 'preact';
+import type { CSSProperties, JSX } from 'preact';
 import type { Rule } from './types';
 
 const PickerClue = memo(() => {
@@ -33,6 +34,7 @@ const PickerClue = memo(() => {
 });
 
 export const App = memo(() => {
+  const storage = useStorage();
   const panelContainerRef = useRef<HTMLDivElement | null>(null);
   const rulesPanelRef = useRef<HTMLDivElement | null>(null);
   const selectorInputRef = useRef<HTMLInputElement | null>(null);
@@ -63,9 +65,9 @@ export const App = memo(() => {
   const onTimeout = useCallback(() => {
     useStore.setIsRunning(false);
     saveConfigNow();
-    localStorage.setItem(STORAGE_AUTORUN_KEY, 'true');
+    storage.setItem(STORAGE_AUTORUN_KEY, 'true');
     window.location.reload();
-  }, [saveConfigNow]);
+  }, [saveConfigNow, storage]);
 
   const { start: startRunner, stop: stopRunner } = useTaskRunner({
     cycleDelay: config.cycleDelay,
@@ -248,23 +250,23 @@ export const App = memo(() => {
   const handleStart = useCallback(() => {
     acquireWakeLock();
     startRunner();
-    localStorage.setItem(STORAGE_AUTORUN_KEY, 'true');
-  }, [startRunner, acquireWakeLock]);
+    storage.setItem(STORAGE_AUTORUN_KEY, 'true');
+  }, [startRunner, acquireWakeLock, storage]);
 
   const handleStop = useCallback(() => {
     releaseWakeLock();
     stopRunner();
     useStore.setIsAutoRun(false);
     useStore.setStatus(StatusState.STOPPED);
-    localStorage.setItem(STORAGE_AUTORUN_KEY, 'false');
-  }, [stopRunner, releaseWakeLock]);
+    storage.setItem(STORAGE_AUTORUN_KEY, 'false');
+  }, [stopRunner, releaseWakeLock, storage]);
 
   useEffect(() => {
     if (isRunning.value) {
       return;
     }
 
-    const autoStart = localStorage.getItem(STORAGE_AUTORUN_KEY);
+    const autoStart = storage.getItem(STORAGE_AUTORUN_KEY);
     if (autoStart !== 'true') {
       return;
     }
@@ -296,18 +298,16 @@ export const App = memo(() => {
     }
   }, [startRunner]);
 
-  useEffect(() => {
-    if (panelContainerRef.current && config.position) {
-      const { top, left, right } = config.position;
-      panelContainerRef.current.style.top = `${top}px`;
-      if (left !== null) {
-        panelContainerRef.current.style.left = `${left}px`;
-        panelContainerRef.current.style.right = 'auto';
-      } else {
-        panelContainerRef.current.style.right = `${right ?? DEFAULT_CONFIG.position.right}px`;
-        panelContainerRef.current.style.left = 'auto';
-      }
+  const mainPanelStyle = useMemo<CSSProperties>(() => {
+    if (!config.position) {
+      return {};
     }
+    const { top, left, right } = config.position;
+    return {
+      top: `${top}px`,
+      left: left !== null ? `${left}px` : 'auto',
+      right: left !== null ? 'auto' : `${right ?? DEFAULT_CONFIG.position.right}px`,
+    };
   }, [config.position]);
 
   useEffect(() => {
@@ -338,6 +338,7 @@ export const App = memo(() => {
       <div style={{ visibility: config.visible ? 'visible' : 'hidden', pointerEvents: config.visible ? 'auto' : 'none' }}>
         <MainPanel
           mainPanelRef={panelContainerRef}
+          style={mainPanelStyle}
           cycleDelay={config.cycleDelay}
           highlightState={highlightState.value}
           highlightedRuleIndex={highlightedRuleIndex.value}

@@ -1,3 +1,4 @@
+import { useStorage } from '@/hooks/useStorage';
 import { delay } from 'es-toolkit';
 import $ from 'jquery';
 import { useCallback, useEffect, useRef } from 'preact/hooks';
@@ -20,6 +21,7 @@ interface UseTaskRunnerReturn {
 }
 
 export const useTaskRunner = ({ cycleDelay, stepDelay, waitDelay, onTimeout }: UseTaskRunnerProps): UseTaskRunnerReturn => {
+  const storage = useStorage();
   const delaysRef = useRef<Pick<Config, 'stepDelay' | 'waitDelay' | 'cycleDelay'>>({ stepDelay, waitDelay, cycleDelay });
 
   useEffect(() => {
@@ -31,7 +33,7 @@ export const useTaskRunner = ({ cycleDelay, stepDelay, waitDelay, onTimeout }: U
       useStore.setIsRunning(false);
       useStore.setIsAutoRun(false);
       useStore.setStatus(StatusState.STOPPED);
-      localStorage.setItem(STORAGE_AUTORUN_KEY, 'false');
+      storage.setItem(STORAGE_AUTORUN_KEY, 'false');
       return;
     }
 

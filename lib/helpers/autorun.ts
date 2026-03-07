@@ -92,10 +92,10 @@ export interface DynamicOptions {
  *   See {@link DynamicOptions}.
  * @returns {void}
  */
-export function runOnDynamic(callback: () => unknown, options: DynamicOptions = {}): void {
+export function runOnDynamic(callback: () => unknown, options: DynamicOptions = {}): MutationObserver {
   const { selector } = options;
 
-  runOnObserver((mutations) => {
+  return runOnObserver((mutations) => {
     const shouldTrigger = mutations.some((mutation) =>
       Array.prototype.some.call(mutation.addedNodes, (node) => {
         if (!(node instanceof HTMLElement)) {
@@ -153,7 +153,7 @@ export interface ObserverOptions {
  *   See {@link ObserverOptions}.
  * @returns {void}
  */
-export function runOnObserver(callback: (mutations: MutationRecord[]) => unknown, initOptions: ObserverOptions = {}): void {
+export function runOnObserver(callback: (mutations: MutationRecord[]) => unknown, initOptions: ObserverOptions = {}): MutationObserver {
   const { target = document.body, options = {} } = initOptions;
 
   const observer = new MutationObserver((mutations, obs) => {
@@ -170,4 +170,6 @@ export function runOnObserver(callback: (mutations: MutationRecord[]) => unknown
     subtree: true,
     ...options,
   });
+
+  return observer;
 }

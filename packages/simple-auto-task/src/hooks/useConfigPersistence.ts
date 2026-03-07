@@ -1,10 +1,11 @@
+import { useStorage } from '@/hooks/useStorage';
 import { debounce } from 'es-toolkit';
 import { useCallback, useEffect, useMemo, useState } from 'preact/hooks';
 
 import { DEFAULT_CONFIG, STORAGE_CONFIG_KEY } from '../app/constants';
 import { selectorList, useStore } from '../stores/useStore';
 
-import type { Config, Position } from '../app/types';
+import type { Config, Position, Rule } from '../app/types';
 
 type PartialConfig = Omit<Config, 'selectors' | 'position'> & { position: Position };
 
@@ -15,12 +16,12 @@ interface UseConfigPersistenceReturn {
 }
 
 export const useConfigPersistence = (): UseConfigPersistenceReturn => {
-  const [partialConfig, setPartialConfig] = useState<PartialConfig>(DEFAULT_CONFIG);
+  const storage = useStorage();
 
-  useEffect(() => {
+  const [partialConfig, setPartialConfig] = useState<PartialConfig>(() => {
     let loadedConfig = { ...DEFAULT_CONFIG };
     try {
-      const savedJson: string | null = localStorage.getItem(STORAGE_CONFIG_KEY);
+      const savedJson = storage.getItem(STORAGE_CONFIG_KEY);
       if (savedJson) {
         const saved: Partial<Config> = JSON.parse(savedJson);
         if (saved && typeof saved === 'object') {
@@ -39,26 +40,38 @@ export const useConfigPersistence = (): UseConfigPersistenceReturn => {
     }
 
     useStore.setSelectorList(loadedConfig.selectors);
-    setPartialConfig({
+
+    return {
       visible: loadedConfig.visible,
       cycleDelay: loadedConfig.cycleDelay,
       position: loadedConfig.position,
       stepDelay: loadedConfig.stepDelay,
       waitDelay: loadedConfig.waitDelay,
-    });
+    };
+  });
+
+  const [selectors, setSelectors] = useState<ReadonlyArray<Rule>>(() => selectorList.value);
+
+  useEffect(() => {
+    const update = () => setSelectors([...selectorList.value]);
+    const unsubscribe = selectorList.subscribe(update);
+    return () => unsubscribe();
   }, []);
 
   const config = useMemo<Config>(
     () => ({
       ...partialConfig,
-      selectors: selectorList.value,
+      selectors,
     }),
-    [partialConfig, selectorList.value],
+    [partialConfig, selectors],
   );
 
-  const saveConfig = useCallback((configToSave: Config) => {
-    localStorage.setItem(STORAGE_CONFIG_KEY, JSON.stringify(configToSave));
-  }, []);
+  const saveConfig = useCallback(
+    (configToSave: Config) => {
+      storage.setItem(STORAGE_CONFIG_KEY, JSON.stringify(configToSave));
+    },
+    [storage],
+  );
 
   const debouncedSave = useMemo(() => {
     return debounce(saveConfig, 300);

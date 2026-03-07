@@ -1,3 +1,5 @@
+import { runOnInteractive, runOnObserver } from '@/helpers/autorun';
+import { protectKeys } from '@/hooks/useStorage';
 import { render } from 'preact';
 
 import { App } from './app/App';
@@ -54,49 +56,23 @@ function initializePanel(): void {
 }
 
 function main(): void {
+  protectKeys([STORAGE_CONFIG_KEY, STORAGE_AUTORUN_KEY]);
   injectGlobalStyles();
-
-  try {
-    const originalClear = Storage.prototype.clear;
-    Storage.prototype.clear = function (this: Storage): void {
-      const config = this.getItem(STORAGE_CONFIG_KEY);
-      const runner = this.getItem(STORAGE_AUTORUN_KEY);
-      originalClear.call(this);
-      if (config) {
-        this.setItem(STORAGE_CONFIG_KEY, config);
-      }
-      if (runner) {
-        this.setItem(STORAGE_AUTORUN_KEY, runner);
-      }
-    };
-
-    const originalRemoveItem = Storage.prototype.removeItem;
-    Storage.prototype.removeItem = function (this: Storage, key: string): void {
-      if (key === STORAGE_CONFIG_KEY || key === STORAGE_AUTORUN_KEY) {
-        console.warn(`Attempt to remove protected key "${key}" was blocked.`);
-        return;
-      }
-      originalRemoveItem.call(this, key);
-    };
-  } catch (error) {
-    console.error('Failed to protect localStorage.', error);
-  }
-
   initializePanel();
 
-  setInterval(() => {
-    const currentRootElement = document.getElementById(ROOT_ELEMENT_ID);
+  runOnObserver(
+    (mutations) => {
+      const isRemoved = mutations.some((mutation) =>
+        Array.from(mutation.removedNodes).some((node) => node instanceof HTMLElement && node.id === ROOT_ELEMENT_ID),
+      );
 
-    if (!document.body || !currentRootElement || !document.body.contains(currentRootElement)) {
-      console.warn('Root element has been removed from DOM. Re-injecting...');
-
-      if (currentRootElement) {
-        currentRootElement.remove();
+      if (isRemoved || !document.getElementById(ROOT_ELEMENT_ID)) {
+        console.warn('Root element has been removed from DOM. Re-injecting...');
+        initializePanel();
       }
-
-      initializePanel();
-    }
-  }, 1000);
+    },
+    { target: document.body, options: { childList: true, subtree: false } },
+  );
 }
 
-main();
+runOnInteractive(main);

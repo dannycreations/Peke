@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef } from 'preact/hooks';
 
 import { HIGHLIGHT_BG_COLORS, HIGHLIGHT_TEXT_COLORS, STATUS_COLORS, STATUS_TEXTS } from '../app/constants';
 
-import type { JSX, RefObject } from 'preact';
+import type { CSSProperties, JSX, RefObject } from 'preact';
 import type { HighlightState, Rule, StatusState } from '../app/types';
 
 interface MainPanelProps {
@@ -25,6 +25,7 @@ interface MainPanelProps {
   readonly stepDelay: number;
   readonly waitDelay: number;
   readonly mainPanelRef?: RefObject<HTMLDivElement>;
+  readonly style?: CSSProperties;
 }
 
 interface DelayConfig {
@@ -60,6 +61,7 @@ export const MainPanel = memo<MainPanelProps>(
     stepDelay,
     waitDelay,
     mainPanelRef,
+    style,
   }) => {
     const listDisplayRef = useRef<HTMLDivElement | null>(null);
 
@@ -82,7 +84,7 @@ export const MainPanel = memo<MainPanelProps>(
     );
 
     return (
-      <div id="panel-container" ref={mainPanelRef}>
+      <div id="panel-container" ref={mainPanelRef} style={style}>
         <div id="panel-header" className="panel-header">
           <span>Simple Auto Task</span>
           <span id="status-indicator">

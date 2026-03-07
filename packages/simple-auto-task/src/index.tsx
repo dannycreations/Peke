@@ -61,17 +61,16 @@ function main(): void {
   initializePanel();
 
   runOnObserver(
-    (mutations) => {
-      const isRemoved = mutations.some((mutation) =>
-        Array.from(mutation.removedNodes).some((node) => node instanceof HTMLElement && node.id === ROOT_ELEMENT_ID),
-      );
-
-      if (isRemoved || !document.getElementById(ROOT_ELEMENT_ID)) {
+    () => {
+      if (!document.getElementById(ROOT_ELEMENT_ID)) {
         console.warn('Root element has been removed from DOM. Re-injecting...');
         initializePanel();
       }
     },
-    { target: document.body, options: { childList: true, subtree: false } },
+    {
+      target: document.body,
+      options: { childList: true, subtree: false },
+    },
   );
 }
 

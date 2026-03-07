@@ -1,4 +1,4 @@
-import { signal } from '@preact/signals';
+import { batch, signal } from '@preact/signals';
 
 import { HighlightState as HighlightStateConst, StatusState as StatusStateConst } from '../app/constants';
 
@@ -20,9 +20,11 @@ interface AddRulePayload {
   readonly selector: string;
 }
 
+let counter = 0;
+
 export const useStore = {
   addRule: (newRuleData: AddRulePayload) => {
-    selectorList.value = [...selectorList.value, { ...newRuleData, id: Date.now() }];
+    selectorList.value = selectorList.value.concat({ ...newRuleData, id: ++counter });
   },
 
   removeRule: (idToRemove: number) => {
@@ -66,6 +68,16 @@ export const useStore = {
   },
 
   updateRule: (updatedRule: Rule) => {
-    selectorList.value = selectorList.value.map((rule) => (rule.id === updatedRule.id ? updatedRule : rule));
+    const list = selectorList.value;
+    const index = list.findIndex((r) => r.id === updatedRule.id);
+    if (index !== -1) {
+      const newList = [...list];
+      newList[index] = updatedRule;
+      selectorList.value = newList;
+    }
+  },
+
+  batchUpdate: (updates: () => void) => {
+    batch(updates);
   },
 } as const;

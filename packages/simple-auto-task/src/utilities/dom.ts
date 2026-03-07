@@ -1,29 +1,38 @@
 export function generateSelector(el: Element): string {
   const path: string[] = [];
-  let currentEl: Element | null = el;
+  let current: Element | null = el;
 
-  while (currentEl && currentEl.nodeType === Node.ELEMENT_NODE) {
-    let selector: string = currentEl.tagName.toLowerCase();
+  while (current instanceof Element) {
+    const tagName = current.tagName.toLowerCase();
 
-    if (currentEl.id) {
-      selector += `#${CSS.escape(currentEl.id)}`;
-      path.unshift(selector);
+    if (current.id) {
+      path.unshift(`#${CSS.escape(current.id)}`);
       break;
-    } else {
-      let sibling: Element | null = currentEl;
-      let nth = 1;
-      while ((sibling = sibling.previousElementSibling) !== null) {
-        if (sibling.tagName.toLowerCase() === selector) {
-          nth++;
+    }
+
+    const parent: HTMLElement | null = current.parentElement;
+    if (!parent) {
+      path.unshift(tagName);
+      break;
+    }
+
+    let nth = 0;
+    let count = 0;
+    const children = parent.children;
+    const len = children.length;
+    for (let i = 0; i < len; i++) {
+      const sibling = children[i];
+      if (sibling.tagName.toLowerCase() === tagName) {
+        count++;
+        if (sibling === current) {
+          nth = count;
         }
-      }
-      if (nth !== 1) {
-        selector += `:nth-of-type(${nth})`;
+        if (nth > 0 && count > 1) break;
       }
     }
 
-    path.unshift(selector);
-    currentEl = currentEl.parentElement;
+    path.unshift(count > 1 ? `${tagName}:nth-of-type(${nth})` : tagName);
+    current = parent;
   }
 
   return path.join(' > ');

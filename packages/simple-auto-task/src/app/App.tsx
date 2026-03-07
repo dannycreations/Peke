@@ -256,8 +256,10 @@ export const App = memo(() => {
   const handleStop = useCallback(() => {
     releaseWakeLock();
     stopRunner();
-    useStore.setIsAutoRun(false);
-    useStore.setStatus(StatusState.STOPPED);
+    useStore.batchUpdate(() => {
+      useStore.setIsAutoRun(false);
+      useStore.setStatus(StatusState.STOPPED);
+    });
     storage.setItem(STORAGE_AUTORUN_KEY, 'false');
   }, [stopRunner, releaseWakeLock, storage]);
 
@@ -271,8 +273,10 @@ export const App = memo(() => {
       return;
     }
 
-    useStore.setIsAutoRun(true);
-    useStore.setStatus(StatusState.WAITING);
+    useStore.batchUpdate(() => {
+      useStore.setIsAutoRun(true);
+      useStore.setStatus(StatusState.WAITING);
+    });
 
     const startWhenReady = () => {
       if (!isAutoRun.value || isRunning.value) {

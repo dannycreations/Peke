@@ -127,28 +127,31 @@ export const MainPanel = memo<MainPanelProps>(
             {selectorList.length === 0 ? (
               <div id="no-rules-message">No rules yet. Add one above.</div>
             ) : (
-              selectorList.map((rule, index) => (
-                <div
-                  key={rule.id}
-                  className="selector-item"
-                  style={{
-                    backgroundColor: highlightedRuleIndex === index ? HIGHLIGHT_BG_COLORS[highlightState] : '',
-                    color: highlightedRuleIndex === index ? HIGHLIGHT_TEXT_COLORS[highlightState] : '',
-                  }}
-                >
-                  <span className="selector-text" title={rule.selector}>
-                    {index + 1}. {rule.selector}
-                  </span>
-                  <div className="btn-group">
-                    <button className="selector-item-btn selector-item-config-btn" data-rule-id={rule.id} title={`Configure rule ${index + 1}`}>
-                      &#9881;
-                    </button>
-                    <button className="selector-item-btn selector-item-remove-btn" data-rule-id={rule.id} title={`Remove rule ${index + 1}`}>
-                      &times;
-                    </button>
+              selectorList.map((rule, index) => {
+                const isHighlighted = highlightedRuleIndex === index;
+                const style = isHighlighted
+                  ? {
+                      backgroundColor: HIGHLIGHT_BG_COLORS[highlightState],
+                      color: HIGHLIGHT_TEXT_COLORS[highlightState],
+                    }
+                  : undefined;
+
+                return (
+                  <div key={rule.id} className="selector-item" style={style}>
+                    <span className="selector-text" title={rule.selector}>
+                      {index + 1}. {rule.selector}
+                    </span>
+                    <div className="btn-group">
+                      <button className="selector-item-btn selector-item-config-btn" data-rule-id={rule.id} title={`Configure rule ${index + 1}`}>
+                        &#9881;
+                      </button>
+                      <button className="selector-item-btn selector-item-remove-btn" data-rule-id={rule.id} title={`Remove rule ${index + 1}`}>
+                        &times;
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
 

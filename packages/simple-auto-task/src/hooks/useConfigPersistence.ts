@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'preact/hooks';
 import { DEFAULT_CONFIG, STORAGE_CONFIG_KEY } from '../app/constants';
 import { selectorList, useStore } from '../stores/useStore';
 
-import type { Config, Position, Rule } from '../app/types';
+import type { Config, Position } from '../app/types';
 
 type PartialConfig = Omit<Config, 'selectors' | 'position'> & { position: Position };
 
@@ -50,20 +50,12 @@ export const useConfigPersistence = (): UseConfigPersistenceReturn => {
     };
   });
 
-  const [selectors, setSelectors] = useState<ReadonlyArray<Rule>>(() => selectorList.value);
-
-  useEffect(() => {
-    const update = () => setSelectors([...selectorList.value]);
-    const unsubscribe = selectorList.subscribe(update);
-    return () => unsubscribe();
-  }, []);
-
   const config = useMemo<Config>(
     () => ({
       ...partialConfig,
-      selectors,
+      selectors: selectorList.value,
     }),
-    [partialConfig, selectors],
+    [partialConfig, selectorList.value],
   );
 
   const saveConfig = useCallback(
@@ -73,17 +65,16 @@ export const useConfigPersistence = (): UseConfigPersistenceReturn => {
     [storage],
   );
 
-  const debouncedSave = useMemo(() => {
-    return debounce(saveConfig, 300);
-  }, [saveConfig]);
+  const debouncedSave = useMemo(() => debounce(saveConfig, 500), [saveConfig]);
 
   useEffect(() => {
     debouncedSave(config);
   }, [config, debouncedSave]);
 
   const saveConfigNow = useCallback(() => {
+    debouncedSave.cancel();
     saveConfig(config);
-  }, [config, saveConfig]);
+  }, [config, saveConfig, debouncedSave]);
 
   const updateConfig = useCallback((newConfig: Partial<Omit<Config, 'selectors'>>) => {
     setPartialConfig((prev) => ({ ...prev, ...newConfig }));

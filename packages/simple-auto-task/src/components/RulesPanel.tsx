@@ -22,12 +22,13 @@ const handleKeyDown = (event: KeyboardEvent): void => {
 
 export const RulesPanel = memo<RulesPanelProps>(
   ({ editingRule, editingRuleIndex, onCloseRules, onSaveRule, onTestSelector, rulesPanelRef, startPicking }) => {
-    const [action, setAction] = useState<ActionType>(ActionTypeConst.CLICK);
-    const [customSelector, setCustomSelector] = useState<string>('');
-    const [deleteActionType, setDeleteActionType] = useState<DeleteActionType>('self');
-    const [ignoreWait, setIgnoreWait] = useState<boolean>(false);
-    const [parentSelector, setParentSelector] = useState<string>('');
-    const [selector, setSelector] = useState<string>('');
+    const [form, setForm] = useState<Omit<Rule, 'id'>>({
+      action: ActionTypeConst.CLICK,
+      selector: '',
+      options: {
+        ignoreWait: false,
+      },
+    });
 
     const selectorInputRef = useRef<HTMLInputElement | null>(null);
     const parentSelectorInputRef = useRef<HTMLInputElement | null>(null);
@@ -35,71 +36,70 @@ export const RulesPanel = memo<RulesPanelProps>(
 
     useEffect(() => {
       if (editingRule) {
-        setAction(editingRule.action);
-        setCustomSelector(editingRule.options.customSelector || '');
-        setDeleteActionType(editingRule.options.deleteActionType || 'self');
-        setIgnoreWait(editingRule.options.ignoreWait || false);
-        setParentSelector(editingRule.options.parentSelector || '');
-        setSelector(editingRule.selector);
+        setForm({
+          action: editingRule.action,
+          selector: editingRule.selector,
+          options: { ...editingRule.options },
+        });
       }
     }, [editingRule]);
 
-    const handlePick = useCallback(() => {
-      startPicking((newSelector: string) => {
-        setSelector(newSelector);
-      });
-    }, [startPicking]);
+    const updateForm = useCallback((updates: Partial<Omit<Rule, 'id'>>) => {
+      setForm((prev) => ({ ...prev, ...updates }));
+    }, []);
 
-    const handlePickParentSelector = useCallback(() => {
-      startPicking((newSelector: string) => {
-        setParentSelector(newSelector);
-      });
-    }, [startPicking]);
+    const updateOptions = useCallback((updates: Partial<Rule['options']>) => {
+      setForm((prev) => ({
+        ...prev,
+        options: { ...prev.options, ...updates },
+      }));
+    }, []);
 
-    const handlePickCustomSelector = useCallback(() => {
-      startPicking((newSelector: string) => {
-        setCustomSelector(newSelector);
-      });
-    }, [startPicking]);
+    const handlePick = useCallback(
+      (field: 'selector' | 'parentSelector' | 'customSelector') => {
+        startPicking((newSelector: string) => {
+          if (field === 'selector') {
+            updateForm({ selector: newSelector });
+          } else {
+            updateOptions({ [field]: newSelector });
+          }
+        });
+      },
+      [startPicking, updateForm, updateOptions],
+    );
 
     const handleSave = useCallback(() => {
-      if (!editingRule) {
-        return;
-      }
+      if (!editingRule) return;
 
-      const updatedOptions: {
-        ignoreWait: boolean;
-        deleteActionType?: DeleteActionType;
-        parentSelector?: string;
-        customSelector?: string;
-      } = {
-        ignoreWait,
+      const updatedOptions: any = {
+        ignoreWait: form.options.ignoreWait,
       };
 
-      if (action === ActionTypeConst.DELETE) {
-        updatedOptions.deleteActionType = deleteActionType;
-        if (deleteActionType === 'parent') {
-          updatedOptions.parentSelector = parentSelector;
-        } else if (deleteActionType === 'custom') {
-          updatedOptions.customSelector = customSelector;
+      if (form.action === ActionTypeConst.DELETE) {
+        updatedOptions.deleteActionType = form.options.deleteActionType || 'self';
+        if (updatedOptions.deleteActionType === 'parent') {
+          updatedOptions.parentSelector = form.options.parentSelector;
+        } else if (updatedOptions.deleteActionType === 'custom') {
+          updatedOptions.customSelector = form.options.customSelector;
         }
       }
 
-      const updatedRule: Rule = {
+      onSaveRule({
         id: editingRule.id,
-        action,
-        selector,
+        action: form.action,
+        selector: form.selector,
         options: updatedOptions,
-      };
+      });
+    }, [editingRule, form, onSaveRule]);
 
-      onSaveRule(updatedRule);
-    }, [action, customSelector, deleteActionType, editingRule, ignoreWait, onSaveRule, parentSelector, selector]);
+    const handleTest = useCallback(
+      (selector: string, ref: RefObject<HTMLInputElement>) => {
+        onTestSelector(selector, ref.current);
+      },
+      [onTestSelector],
+    );
 
-    const handleTest = useCallback(() => {
-      onTestSelector(selector, selectorInputRef.current);
-    }, [onTestSelector, selector]);
-
-    const isDeleteAction: boolean = action === ActionTypeConst.DELETE;
+    const isDeleteAction = form.action === ActionTypeConst.DELETE;
 
     return (
       <div id="rules-panel" ref={rulesPanelRef} style={{ display: editingRule ? 'block' : 'none' }}>
@@ -116,15 +116,20 @@ export const RulesPanel = memo<RulesPanelProps>(
               placeholder="Enter selector"
               style={{ marginBottom: '4px' }}
               type="text"
-              value={selector}
-              onInput={(e) => setSelector(e.currentTarget.value)}
+              value={form.selector}
+              onInput={(e) => updateForm({ selector: e.currentTarget.value })}
               onKeyDown={handleKeyDown}
             />
             <div className="btn-group">
-              <button id="rules-pick-btn" className="panel-button" title="Pick an element from the page" onClick={handlePick}>
+              <button id="rules-pick-btn" className="panel-button" title="Pick an element from the page" onClick={() => handlePick('selector')}>
                 Pick
               </button>
-              <button id="rules-test-btn" className="panel-button" title="Test the current selector" onClick={handleTest}>
+              <button
+                id="rules-test-btn"
+                className="panel-button"
+                title="Test the current selector"
+                onClick={() => handleTest(form.selector, selectorInputRef)}
+              >
                 Test
               </button>
             </div>
@@ -135,8 +140,8 @@ export const RulesPanel = memo<RulesPanelProps>(
             <select
               id="rules-panel-action"
               className="panel-select"
-              value={action}
-              onChange={(e) => setAction(e.currentTarget.value as ActionType)}
+              value={form.action}
+              onChange={(e) => updateForm({ action: e.currentTarget.value as ActionType })}
               onKeyDown={handleKeyDown}
             >
               <option value={ActionTypeConst.CLICK}>Click Element</option>
@@ -152,8 +157,8 @@ export const RulesPanel = memo<RulesPanelProps>(
                 <select
                   id="rules-panel-delete-type"
                   className="panel-select"
-                  value={deleteActionType}
-                  onChange={(e) => setDeleteActionType(e.currentTarget.value as DeleteActionType)}
+                  value={form.options.deleteActionType || 'self'}
+                  onChange={(e) => updateOptions({ deleteActionType: e.currentTarget.value as DeleteActionType })}
                   onKeyDown={handleKeyDown}
                 >
                   <option value="self">Delete Self</option>
@@ -161,7 +166,7 @@ export const RulesPanel = memo<RulesPanelProps>(
                   <option value="custom">Delete Custom</option>
                 </select>
               </label>
-              {deleteActionType === 'parent' && (
+              {form.options.deleteActionType === 'parent' && (
                 <label id="rules-panel-parent-label" className="panel-label">
                   Parent Selector
                   <input
@@ -170,27 +175,32 @@ export const RulesPanel = memo<RulesPanelProps>(
                     className="panel-input"
                     style={{ marginBottom: '4px' }}
                     type="text"
-                    value={parentSelector}
+                    value={form.options.parentSelector || ''}
                     placeholder="e.g., .card, #container"
-                    onInput={(e) => setParentSelector(e.currentTarget.value)}
+                    onInput={(e) => updateOptions({ parentSelector: e.currentTarget.value })}
                     onKeyDown={handleKeyDown}
                   />
                   <div className="btn-group">
-                    <button id="rules-parent-pick-btn" className="panel-button" title="Pick Parent Element" onClick={handlePickParentSelector}>
+                    <button
+                      id="rules-parent-pick-btn"
+                      className="panel-button"
+                      title="Pick Parent Element"
+                      onClick={() => handlePick('parentSelector')}
+                    >
                       Pick
                     </button>
                     <button
                       id="rules-parent-test-btn"
                       className="panel-button"
                       title="Test Parent Selector"
-                      onClick={() => onTestSelector(parentSelector, parentSelectorInputRef.current)}
+                      onClick={() => handleTest(form.options.parentSelector || '', parentSelectorInputRef)}
                     >
                       Test
                     </button>
                   </div>
                 </label>
               )}
-              {deleteActionType === 'custom' && (
+              {form.options.deleteActionType === 'custom' && (
                 <label id="rules-panel-custom-label" className="panel-label">
                   Custom Selector
                   <input
@@ -199,20 +209,25 @@ export const RulesPanel = memo<RulesPanelProps>(
                     className="panel-input"
                     style={{ marginBottom: '4px' }}
                     type="text"
-                    value={customSelector}
+                    value={form.options.customSelector || ''}
                     placeholder="e.g., .ad-banner"
-                    onInput={(e) => setCustomSelector(e.currentTarget.value)}
+                    onInput={(e) => updateOptions({ customSelector: e.currentTarget.value })}
                     onKeyDown={handleKeyDown}
                   />
                   <div className="btn-group">
-                    <button id="rules-custom-pick-btn" className="panel-button" title="Pick Custom Element" onClick={handlePickCustomSelector}>
+                    <button
+                      id="rules-custom-pick-btn"
+                      className="panel-button"
+                      title="Pick Custom Element"
+                      onClick={() => handlePick('customSelector')}
+                    >
                       Pick
                     </button>
                     <button
                       id="rules-custom-test-btn"
                       className="panel-button"
                       title="Test Custom Selector"
-                      onClick={() => onTestSelector(customSelector, customSelectorInputRef.current)}
+                      onClick={() => handleTest(form.options.customSelector || '', customSelectorInputRef)}
                     >
                       Test
                     </button>
@@ -225,7 +240,12 @@ export const RulesPanel = memo<RulesPanelProps>(
           <label className="panel-label switch-label">
             <span>Ignore wait</span>
             <div className="switch">
-              <input id="rules-ignore-wait-checkbox" type="checkbox" checked={ignoreWait} onChange={(e) => setIgnoreWait(e.currentTarget.checked)} />
+              <input
+                id="rules-ignore-wait-checkbox"
+                type="checkbox"
+                checked={form.options.ignoreWait}
+                onChange={(e) => updateOptions({ ignoreWait: e.currentTarget.checked })}
+              />
               <span className="switch-slider"></span>
             </div>
           </label>

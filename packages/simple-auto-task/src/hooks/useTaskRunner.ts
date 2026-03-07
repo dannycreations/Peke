@@ -1,3 +1,4 @@
+import { runOnObserver } from '@/helpers/autorun';
 import { useStorage } from '@/hooks/useStorage';
 import { delay } from 'es-toolkit';
 import $ from 'jquery';
@@ -28,69 +29,73 @@ export const useTaskRunner = ({ cycleDelay, stepDelay, waitDelay, onTimeout }: U
     delaysRef.current = { stepDelay, waitDelay, cycleDelay };
   }, [stepDelay, waitDelay, cycleDelay]);
 
-  const executeRuleAction = useCallback((rule: Rule) => {
-    if (rule.action === ActionType.STOP) {
-      useStore.setIsRunning(false);
-      useStore.setIsAutoRun(false);
-      useStore.setStatus(StatusState.STOPPED);
-      storage.setItem(STORAGE_AUTORUN_KEY, 'false');
-      return;
-    }
-
-    const element = $(rule.selector).first();
-    if (element.length === 0) {
-      return;
-    }
-
-    switch (rule.action) {
-      case ActionType.CLICK: {
-        element[0].scrollIntoView({
-          block: 'center',
+  const executeRuleAction = useCallback(
+    (rule: Rule) => {
+      if (rule.action === ActionType.STOP) {
+        useStore.batchUpdate(() => {
+          useStore.setIsRunning(false);
+          useStore.setIsAutoRun(false);
+          useStore.setStatus(StatusState.STOPPED);
         });
-        element.trigger('click');
-        break;
+        storage.setItem(STORAGE_AUTORUN_KEY, 'false');
+        return;
       }
-      case ActionType.DELETE: {
-        const { customSelector, deleteActionType, parentSelector } = rule.options;
-        if (deleteActionType === 'self') {
-          element.remove();
-        } else if (deleteActionType === 'parent' && parentSelector) {
-          element.closest(parentSelector)?.remove();
-        } else if (deleteActionType === 'custom' && customSelector) {
-          $(customSelector).each((_: number, el: HTMLElement) => {
-            $(el).remove();
-          });
+
+      const $element = $(rule.selector).first();
+      if ($element.length === 0) return;
+
+      switch (rule.action) {
+        case ActionType.CLICK: {
+          $element[0].scrollIntoView({ block: 'center' });
+          $element.trigger('click');
+          break;
         }
-        break;
+        case ActionType.DELETE: {
+          const { customSelector, deleteActionType, parentSelector } = rule.options;
+          switch (deleteActionType) {
+            case 'self':
+              $element.remove();
+              break;
+            case 'parent':
+              if (parentSelector) $element.closest(parentSelector).remove();
+              break;
+            case 'custom':
+              if (customSelector) $(customSelector).remove();
+              break;
+          }
+          break;
+        }
       }
-    }
-  }, []);
+    },
+    [storage],
+  );
 
   const waitForElement = useCallback(async (rule: Rule, timeoutMs: number): Promise<boolean> => {
-    if ($(rule.selector).length > 0) {
-      return true;
-    }
-
-    if (rule.options.ignoreWait) {
-      return false;
-    }
+    const { selector, options } = rule;
+    if (options.ignoreWait) return true;
+    if ($(selector).length > 0) return true;
+    if (timeoutMs <= 0) return false;
 
     return new Promise<boolean>((resolve) => {
-      const observer = new MutationObserver(() => {
-        if ($(rule.selector).length > 0) {
-          observer.disconnect();
-          clearTimeout(timeoutId);
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+      let observer: MutationObserver | null = null;
+
+      const cleanup = () => {
+        if (timeoutId) clearTimeout(timeoutId);
+        if (observer) observer.disconnect();
+        timeoutId = null;
+        observer = null;
+      };
+
+      observer = runOnObserver(() => {
+        if ($(selector).length > 0) {
+          cleanup();
           resolve(true);
         }
       });
 
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true,
-      });
-
-      const timeoutId = setTimeout(() => {
-        observer.disconnect();
+      timeoutId = setTimeout(() => {
+        cleanup();
         resolve(false);
       }, timeoutMs);
     });
@@ -98,20 +103,20 @@ export const useTaskRunner = ({ cycleDelay, stepDelay, waitDelay, onTimeout }: U
 
   const runCycle = useCallback(async () => {
     while (isRunning.value) {
-      for (const [index, rule] of selectorList.value.entries()) {
-        if (!isRunning.value) {
-          return;
-        }
+      const currentList = selectorList.value;
+      if (currentList.length === 0) break;
 
-        useStore.setHighlightedRuleIndex(index);
-        useStore.setHighlightState(HighlightState.WAITING);
+      for (let i = 0; i < currentList.length; i++) {
+        const rule = currentList[i];
+        if (!isRunning.value) return;
 
-        const timeoutMs: number = delaysRef.current.waitDelay;
-        const elementFound: boolean = await waitForElement(rule, timeoutMs);
+        useStore.batchUpdate(() => {
+          useStore.setHighlightedRuleIndex(i);
+          useStore.setHighlightState(HighlightState.WAITING);
+        });
 
-        if (!isRunning.value) {
-          return;
-        }
+        const elementFound = await waitForElement(rule, delaysRef.current.waitDelay);
+        if (!isRunning.value) return;
 
         if (elementFound) {
           executeRuleAction(rule);
@@ -121,15 +126,17 @@ export const useTaskRunner = ({ cycleDelay, stepDelay, waitDelay, onTimeout }: U
           return;
         }
 
-        if (!rule.options.ignoreWait) {
+        if (!rule.options.ignoreWait && delaysRef.current.stepDelay > 0) {
           await delay(delaysRef.current.stepDelay);
         }
 
-        useStore.setHighlightState(HighlightState.IDLE);
-        useStore.setHighlightedRuleIndex(null);
+        useStore.batchUpdate(() => {
+          useStore.setHighlightState(HighlightState.IDLE);
+          useStore.setHighlightedRuleIndex(null);
+        });
       }
 
-      if (isRunning.value) {
+      if (isRunning.value && delaysRef.current.cycleDelay > 0) {
         await delay(delaysRef.current.cycleDelay);
       }
     }

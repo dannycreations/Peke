@@ -59,15 +59,19 @@ export const useElementPicker = ({ panelContainerRef, rulesPanelRef }: UseElemen
       }
     };
 
+    let hoverRafId: number | null = null;
     const handlePickingHover = (event: MouseEvent): void => {
       lastClientX = event.clientX;
       lastClientY = event.clientY;
 
-      if (isPaused) {
-        return;
-      }
-      const target = event.composedPath()[0] as Element;
-      highlightElement(target);
+      if (isPaused) return;
+
+      if (hoverRafId !== null) cancelAnimationFrame(hoverRafId);
+      hoverRafId = requestAnimationFrame(() => {
+        const target = document.elementFromPoint(lastClientX, lastClientY);
+        if (target) highlightElement(target);
+        hoverRafId = null;
+      });
     };
 
     const handlePickingClick = (event: MouseEvent): void => {
@@ -132,6 +136,7 @@ export const useElementPicker = ({ panelContainerRef, rulesPanelRef }: UseElemen
       document.removeEventListener('click', handlePickingClick, { capture: true });
       document.removeEventListener('keydown', handleKeyEvent, { capture: true });
       document.removeEventListener('keyup', handleKeyEvent, { capture: true });
+      if (hoverRafId !== null) cancelAnimationFrame(hoverRafId);
     };
   }, [isPicking.value, panelContainerRef, rulesPanelRef]);
 

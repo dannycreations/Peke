@@ -14,6 +14,12 @@ interface SongData {
 let lastSortedLength: number = 0;
 let lastFirstElement: string | null = null;
 
+const MULTIPLIERS: Record<string, number> = {
+  K: 1_000,
+  M: 1_000_000,
+  B: 1_000_000_000,
+} as const;
+
 function parsePlayCount(playString: string | null): number {
   if (!playString) {
     return 0;
@@ -22,20 +28,17 @@ function parsePlayCount(playString: string | null): number {
   const text = playString.trim().toUpperCase();
   const num = parseFloat(text);
 
-  if (isNaN(num)) {
+  if (Number.isNaN(num)) {
     return 0;
   }
 
-  let multiplier = 1;
-  if (text.includes('K')) {
-    multiplier = 1_000;
-  } else if (text.includes('M')) {
-    multiplier = 1_000_000;
-  } else if (text.includes('B')) {
-    multiplier = 1_000_000_000;
+  for (const unit in MULTIPLIERS) {
+    if (text.includes(unit)) {
+      return num * MULTIPLIERS[unit];
+    }
   }
 
-  return num * multiplier;
+  return num;
 }
 
 function getPlaylistState(container: Element): PlaylistState {
@@ -57,45 +60,44 @@ function getPlaylistState(container: Element): PlaylistState {
 
 function sortPlaylist(): void {
   const container = document.querySelector('ytmusic-playlist-shelf-renderer #contents');
-  if (!container) {
-    return;
-  }
+  if (!container) return;
 
   const continuationItem = container.querySelector('ytmusic-continuation-item-renderer');
-  if (continuationItem) {
-    continuationItem.remove();
-  }
+  const songItems = container.querySelectorAll('ytmusic-responsive-list-item-renderer');
 
-  const songItem = container.querySelectorAll('ytmusic-responsive-list-item-renderer');
-  const songData: SongData[] = Array.from(songItem).map((item) => {
-    const playCountElement = item.querySelector<HTMLElement>('yt-formatted-string[title*=" plays"]');
+  if (songItems.length < 2) return;
+
+  const songData: SongData[] = [];
+  let isSorted = true;
+
+  for (let i = 0; i < songItems.length; i++) {
+    const element = songItems[i];
+    const playCountElement = element.querySelector<HTMLElement>('yt-formatted-string[title*=" plays"]');
     const plays = playCountElement ? parsePlayCount(playCountElement.title) : 0;
 
-    return { element: item, plays };
-  });
+    songData.push({ element, plays });
 
-  const reAppendContinuationItem = () => {
-    if (continuationItem) {
-      container.appendChild(continuationItem);
+    if (isSorted && i > 0 && songData[i - 1].plays < plays) {
+      isSorted = false;
     }
-  };
+  }
 
-  if (songData.length < 2) {
-    reAppendContinuationItem();
+  if (isSorted) {
     return;
   }
 
   songData.sort((a, b) => b.plays - a.plays);
 
   const fragment = document.createDocumentFragment();
-  songData.forEach((data) => {
-    fragment.appendChild(data.element);
-  });
+  for (const { element } of songData) {
+    fragment.appendChild(element);
+  }
 
-  container.textContent = '';
-  container.appendChild(fragment);
+  if (continuationItem) {
+    fragment.appendChild(continuationItem);
+  }
 
-  reAppendContinuationItem();
+  container.replaceChildren(fragment);
 
   const currentState = getPlaylistState(container);
   lastSortedLength = currentState.length;
@@ -106,21 +108,37 @@ function main(): void {
   sortPlaylist();
 
   const debouncedSortPlaylist = debounce(sortPlaylist, 100);
+  const target = document.querySelector('ytmusic-app-layout') || document.body;
 
-  runOnObserver(() => {
-    const playlistContainer = document.querySelector('ytmusic-playlist-shelf-renderer #contents');
-    if (!playlistContainer) return;
+  runOnObserver(
+    (mutations) => {
+      const hasMeaningfulChange = mutations.some(
+        (m) =>
+          m.addedNodes.length > 0 &&
+          Array.prototype.some.call(
+            m.addedNodes,
+            (n) =>
+              n instanceof HTMLElement &&
+              (n.matches('ytmusic-responsive-list-item-renderer') || n.querySelector('ytmusic-responsive-list-item-renderer')),
+          ),
+      );
 
-    const currentState = getPlaylistState(playlistContainer);
+      if (!hasMeaningfulChange) {
+        return;
+      }
 
-    const hasLengthChanged = currentState.length !== lastSortedLength;
-    const hasFirstElementChanged = currentState.firstElement !== lastFirstElement;
+      const playlistContainer = document.querySelector('ytmusic-playlist-shelf-renderer #contents');
+      if (!playlistContainer) {
+        return;
+      }
 
-    if (hasLengthChanged || hasFirstElementChanged) {
-      console.log('Playlist changed, re-sorting...');
-      debouncedSortPlaylist();
-    }
-  });
+      const currentState = getPlaylistState(playlistContainer);
+      if (currentState.length !== lastSortedLength || currentState.firstElement !== lastFirstElement) {
+        debouncedSortPlaylist();
+      }
+    },
+    { target },
+  );
 }
 
 runOnComplete(main);

@@ -93,21 +93,25 @@ export interface DynamicOptions {
  * @returns {void}
  */
 export function runOnDynamic(callback: () => unknown, options: DynamicOptions = {}): void {
+  const { selector } = options;
+
   runOnObserver((mutations) => {
-    for (const mutation of mutations) {
-      if (mutation.addedNodes.length === 0) {
-        continue;
-      }
-
-      mutation.addedNodes.forEach((node) => {
+    const shouldTrigger = mutations.some((mutation) =>
+      Array.prototype.some.call(mutation.addedNodes, (node) => {
         if (!(node instanceof HTMLElement)) {
-          return;
+          return false;
         }
 
-        if (!options.selector || node.matches(options.selector)) {
-          callback();
+        if (!selector || node.matches(selector)) {
+          return true;
         }
-      });
+
+        return selector && node.querySelector(selector) !== null;
+      }),
+    );
+
+    if (shouldTrigger) {
+      callback();
     }
   });
 }
@@ -151,6 +155,19 @@ export interface ObserverOptions {
  */
 export function runOnObserver(callback: (mutations: MutationRecord[]) => unknown, initOptions: ObserverOptions = {}): void {
   const { target = document.body, options = {} } = initOptions;
-  const observer = new MutationObserver(callback);
-  observer.observe(target, { childList: true, subtree: true, ...options });
+
+  const observer = new MutationObserver((mutations, obs) => {
+    try {
+      callback(mutations);
+    } catch (error) {
+      obs.disconnect();
+      throw error;
+    }
+  });
+
+  observer.observe(target, {
+    childList: true,
+    subtree: true,
+    ...options,
+  });
 }

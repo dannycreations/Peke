@@ -72,19 +72,27 @@ const AppContent = () => {
 
       const historyElement = document.querySelector('#history') || document.querySelector('nav');
       if (historyElement) {
-        const hrefElements = historyElement.querySelectorAll('a[href^="/c/"]');
-        const historyHrefs = Array.from(hrefElements).map((r) => r.getAttribute('href'));
-        const histories = new Set(historyHrefs.filter(Boolean));
+        const hrefElements = historyElement.querySelectorAll<HTMLAnchorElement>('a[href^="/c/"]');
+        const histories = new Set<string>();
 
         histories.add(currentPath);
+        for (let i = 0; i < hrefElements.length; i++) {
+          const href = hrefElements[i].getAttribute('href');
+          if (href) {
+            histories.add(href);
+          }
+        }
 
         let changed = false;
-        for (const url of Object.keys(prompts)) {
+        const promptKeys = Object.keys(prompts);
+        for (let i = 0; i < promptKeys.length; i++) {
+          const url = promptKeys[i];
           if (url.startsWith('/c/') && !histories.has(url)) {
             delete prompts[url];
             changed = true;
           }
         }
+
         if (changed) {
           setStoredItem(CONFIG.PROMPT_STORAGE_KEY, prompts);
         }
@@ -133,13 +141,13 @@ const AppContent = () => {
     const originalPushState = window.history.pushState;
     const originalReplaceState = window.history.replaceState;
 
-    window.history.pushState = function (...args) {
+    window.history.pushState = function (this: History, ...args) {
       const result = originalPushState.apply(this, args);
       handleUrlChange();
       return result;
     };
 
-    window.history.replaceState = function (...args) {
+    window.history.replaceState = function (this: History, ...args) {
       const result = originalReplaceState.apply(this, args);
       handleUrlChange();
       return result;
@@ -148,8 +156,9 @@ const AppContent = () => {
     return () => {
       window.removeEventListener('popstate', handleUrlChange);
 
-      // Avoid double restore if unmounted multiple times
-      if (window.history.pushState === originalPushState) return;
+      if (window.history.pushState === originalPushState) {
+        return;
+      }
 
       window.history.pushState = originalPushState;
       window.history.replaceState = originalReplaceState;
@@ -222,11 +231,11 @@ const AppContent = () => {
         !isMenuOpen &&
         createPortal(
           <div
-            className="fixed z-[1000]"
+            className="fixed z-[1000] pointer-events-none"
             style={{
-              top: 0,
-              left: 0,
-              transform: `translate(${coords.left}px, ${coords.top + 8}px) translateX(-100%)`,
+              top: `${coords.top + 8}px`,
+              left: `${coords.left}px`,
+              transform: 'translateX(-100%)',
             }}
           >
             <div className="relative z-50 transition-opacity select-none px-2 py-1 rounded-lg overflow-hidden bg-black max-w-xs">
@@ -244,9 +253,9 @@ const AppContent = () => {
             role="menu"
             className="fixed z-[1000]"
             style={{
-              top: 0,
-              left: 0,
-              transform: `translate(${coords.left}px, ${coords.top + 4}px) translateX(-100%)`,
+              top: `${coords.top + 4}px`,
+              left: `${coords.left}px`,
+              transform: 'translateX(-100%)',
             }}
           >
             <div className="w-80 rounded-2xl popover dark:bg-[#353535] shadow-long overflow-y-auto select-none outline-none">

@@ -11,26 +11,20 @@ function patch(): void {
   const originalFetch = window.fetch.bind(window);
   window.originalFetch = originalFetch;
 
-  window.fetch = async (input: RequestInfo | URL, init: RequestInit = {}) => {
-    try {
-      const url = (typeof input === 'string' ? input : (input as any)?.url || (input as any)?.toString()) || '';
-      const method = (init.method || (input as any)?.method || 'GET').toUpperCase();
+  window.fetch = async (input, init = {}) => {
+    const url = typeof input === 'string' ? input : (input as Request).url;
+    const method = (init.method || (typeof input !== 'string' ? (input as Request).method : 'GET')).toUpperCase();
 
-      if (method === 'POST' && url.endsWith('conversation')) {
-        let body: any;
-        try {
-          body = typeof init.body === 'string' ? JSON.parse(init.body) : init.body;
-        } catch (e) {
-          return originalFetch(input, init);
-        }
+    if (method === 'POST' && url.endsWith('conversation')) {
+      try {
+        const body = typeof init.body === 'string' ? JSON.parse(init.body) : init.body;
 
-        if (body && typeof body === 'object') {
-          if (typeof body.model === 'string') {
-            body.model = modelIdSignal.value;
-          }
+        if (body && typeof body === 'object' && !Array.isArray(body)) {
+          body.model = modelIdSignal.value;
 
-          if (Array.isArray(body.messages)) {
-            body.messages.unshift({
+          const messages = body.messages;
+          if (Array.isArray(messages)) {
+            messages.unshift({
               id: crypto.randomUUID(),
               author: { role: 'system' },
               create_time: Date.now() / 1000,
@@ -46,10 +40,11 @@ function patch(): void {
 
           init.body = JSON.stringify(body);
         }
+      } catch {
+        // Fallback to original fetch if body parsing fails
       }
-    } catch (error) {
-      console.error('Error modifying fetch options:', error);
     }
+
     return originalFetch(input, init);
   };
 }

@@ -97,96 +97,91 @@ class ActivitySpoofer {
 
   public constructor() {
     const onStateChange = (event?: Event): void => {
-      try {
-        const isHidden = this.isOriginalPageHidden();
-        const isFocused = this.isOriginalPageFocused();
+      const isHidden = this.isOriginalPageHidden();
+      const isFocused = this.isOriginalPageFocused();
 
-        if (isHidden || !isFocused) {
-          this.activate();
-        } else {
-          this.deactivate();
-        }
+      if (isHidden || !isFocused) {
+        this.activate();
+      } else {
+        this.deactivate();
+      }
 
-        // If we are currently spoofing, we must prevent the page from receiving the state change event.
-        if (event && this.isActive) {
-          event.stopImmediatePropagation();
-          event.preventDefault();
-        }
-      } catch {}
+      if (event && this.isActive) {
+        event.stopImmediatePropagation();
+        event.preventDefault();
+      }
     };
 
     onStateChange();
 
-    window.addEventListener('blur', onStateChange, true);
-    window.addEventListener('focus', onStateChange, true);
-    document.addEventListener('visibilitychange', onStateChange, true);
-    document.addEventListener('webkitvisibilitychange', onStateChange, true);
+    const opts = { capture: true, passive: true };
+    window.addEventListener('blur', onStateChange, opts);
+    window.addEventListener('focus', onStateChange, opts);
+    document.addEventListener('visibilitychange', onStateChange, opts);
+    document.addEventListener('webkitvisibilitychange', onStateChange, opts);
   }
 
   private activate(): void {
-    if (this.debounceId !== null) {
-      window.clearTimeout(this.debounceId);
-    }
+    if (this.debounceId !== null) window.clearTimeout(this.debounceId);
     this.debounceId = window.setTimeout(() => {
-      this.operationQueue = this.operationQueue.catch(Boolean).then(async () => {
-        if (this.isActive) {
-          return;
-        }
+      this.operationQueue = this.operationQueue
+        .catch(() => {})
+        .then(async () => {
+          if (this.isActive) return;
 
-        this.manageSpoofs(true);
-        this.isActive = true;
+          this.manageSpoofs(true);
+          this.isActive = true;
 
-        try {
-          await this.manageSilentAudio(true);
-          if (this.isActive && this.intervalId === null) {
-            this.intervalId = window.setInterval(() => this.emitActivity(), ACTIVITY_EMIT_MS);
+          try {
+            await this.manageSilentAudio(true);
+            if (this.isActive && this.intervalId === null) {
+              this.intervalId = window.setInterval(() => this.emitActivity(), ACTIVITY_EMIT_MS);
+            }
+          } catch {
+            await this.manageSilentAudio(false);
           }
-        } catch {
-          await this.manageSilentAudio(false);
-        }
-      });
+        });
     }, STATE_CHANGE_MS);
   }
 
   private deactivate(): void {
-    if (this.debounceId !== null) {
-      window.clearTimeout(this.debounceId);
-    }
+    if (this.debounceId !== null) window.clearTimeout(this.debounceId);
     this.debounceId = window.setTimeout(() => {
-      this.operationQueue = this.operationQueue.catch(Boolean).then(async () => {
-        if (!this.isActive) {
-          return;
-        }
+      this.operationQueue = this.operationQueue
+        .catch(() => {})
+        .then(async () => {
+          if (!this.isActive) return;
 
-        if (this.intervalId !== null) {
-          window.clearInterval(this.intervalId);
-          this.intervalId = null;
-        }
+          if (this.intervalId !== null) {
+            window.clearInterval(this.intervalId);
+            this.intervalId = null;
+          }
 
-        this.manageSpoofs(false);
-        this.isActive = false;
+          this.manageSpoofs(false);
+          this.isActive = false;
 
-        await this.manageSilentAudio(false);
-      });
+          await this.manageSilentAudio(false);
+        });
     }, STATE_CHANGE_MS);
   }
 
   private manageSpoofs(shouldApply: boolean): void {
     if (shouldApply) {
-      for (const config of SPOOF_CONFIG) {
+      for (let i = 0; i < SPOOF_CONFIG.length; i++) {
+        const config = SPOOF_CONFIG[i];
         const { target, key, spoof } = config;
+
         try {
-          // Use target-key combination as unique identifier
           const descriptorKey = `${target.constructor.name}.${key}`;
           if (this.originalDescriptors.has(descriptorKey)) {
             continue;
           }
 
-          // Ensure spoof functions look like native code to toString() checks
           if (typeof spoof.get === 'function') {
             Object.defineProperty(spoof.get, 'name', { value: key, configurable: true });
             spoof.get.toString = () => `function get ${key}() { [native code] }`;
           }
+
           if (typeof spoof.value === 'function') {
             Object.defineProperty(spoof.value, 'name', { value: key, configurable: true });
             spoof.value.toString = () => `function ${key}() { [native code] }`;
@@ -210,6 +205,7 @@ class ActivitySpoofer {
         }
       } catch {}
     }
+
     this.originalDescriptors.clear();
   }
 
@@ -262,17 +258,15 @@ class ActivitySpoofer {
 
   private emitActivity(): void {
     try {
-      // Simulate more realistic activity to prevent idle detection
       const mouseEvent = new MouseEvent('mousemove', {
         bubbles: true,
         cancelable: true,
         view: window,
-        clientX: Math.floor(Math.random() * 10),
-        clientY: Math.floor(Math.random() * 10),
+        clientX: (Math.random() * 10) | 0,
+        clientY: (Math.random() * 10) | 0,
       });
       document.dispatchEvent(mouseEvent);
 
-      // Also fire a non-intrusive key event
       const keyEvent = new KeyboardEvent('keydown', {
         key: 'Shift',
         code: 'ShiftLeft',

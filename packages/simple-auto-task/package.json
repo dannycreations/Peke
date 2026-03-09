@@ -1,6 +1,6 @@
 {
   "name": "simple-auto-task",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "author": "dannycreations",
   "license": "GPL",
   "type": "module",
@@ -18,7 +18,7 @@
   },
   "homepage": "https://github.com/dannycreations/Peke",
   "dependencies": {
-    "@preact/signals": "^2.8.1",
+    "@preact/signals": "^2.8.2",
     "jquery": "^4.0.0",
     "preact": "^10.28.4"
   },

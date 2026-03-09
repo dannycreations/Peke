@@ -88,6 +88,7 @@ const ACTIVITY_EMIT_MS: number = 60000;
 
 class ActivitySpoofer {
   private isActive: boolean = false;
+  private hasUserInteracted: boolean = false;
   private intervalId: number | null = null;
   private debounceId: number | null = null;
   private audioContext: AudioContext | null = null;
@@ -96,6 +97,25 @@ class ActivitySpoofer {
   private readonly originalDescriptors: Map<string, OriginalDescriptorInfo> = new Map();
 
   public constructor() {
+    const handleUserInteraction = (): void => {
+      if (this.hasUserInteracted) return;
+      this.hasUserInteracted = true;
+
+      window.removeEventListener('mousedown', handleUserInteraction, { capture: true });
+      window.removeEventListener('keydown', handleUserInteraction, { capture: true });
+      window.removeEventListener('touchstart', handleUserInteraction, { capture: true });
+      window.removeEventListener('pointerdown', handleUserInteraction, { capture: true });
+
+      if (this.isActive) {
+        this.activate();
+      }
+    };
+
+    window.addEventListener('mousedown', handleUserInteraction, { capture: true });
+    window.addEventListener('keydown', handleUserInteraction, { capture: true });
+    window.addEventListener('touchstart', handleUserInteraction, { capture: true });
+    window.addEventListener('pointerdown', handleUserInteraction, { capture: true });
+
     const onStateChange = (event?: Event): void => {
       const isHidden = this.isOriginalPageHidden();
       const isFocused = this.isOriginalPageFocused();
@@ -114,11 +134,10 @@ class ActivitySpoofer {
 
     onStateChange();
 
-    const opts = { capture: true, passive: true };
-    window.addEventListener('blur', onStateChange, opts);
-    window.addEventListener('focus', onStateChange, opts);
-    document.addEventListener('visibilitychange', onStateChange, opts);
-    document.addEventListener('webkitvisibilitychange', onStateChange, opts);
+    window.addEventListener('blur', onStateChange, { capture: true });
+    window.addEventListener('focus', onStateChange, { capture: true });
+    document.addEventListener('visibilitychange', onStateChange, { capture: true });
+    document.addEventListener('webkitvisibilitychange', onStateChange, { capture: true });
   }
 
   private activate(): void {
@@ -219,6 +238,10 @@ class ActivitySpoofer {
           await ctx.close();
         } catch {}
       }
+      return;
+    }
+
+    if (!this.hasUserInteracted) {
       return;
     }
 

@@ -3,9 +3,9 @@ export const CONFIG = {
   AVAILABLE_MODELS: {
     'gpt-5-3': 'GPT-5.3',
     'gpt-5.3-mini': 'GPT-5.3-mini',
-    'gpt-5.2': 'GPT-5.2',
+    'gpt-5-2': 'GPT-5.2',
     'gpt-5.2-mini': 'GPT-5.2-mini',
-    'gpt-5.1': 'GPT-5.1',
+    'gpt-5-1': 'GPT-5.1',
     'gpt-5.1-mini': 'GPT-5.1-mini',
     'gpt-5': 'GPT-5',
     'gpt-5-mini': 'GPT-5-mini',

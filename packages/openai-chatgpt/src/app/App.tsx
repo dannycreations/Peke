@@ -1,8 +1,10 @@
+import { runOnComplete } from '@/helpers/autorun';
 import { Component } from 'preact';
 import { createPortal } from 'preact/compat';
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 
-import { modelIdSignal, systemPromptSignal } from '../stores/useStore';
+import { fetchModels } from '../helpers/modelHelper';
+import { modelIdSignal, modelListSignal, systemPromptSignal } from '../stores/useStore';
 import { getStoredItem, setStoredItem } from '../utilities/storage';
 import { CONFIG } from './constants';
 
@@ -30,6 +32,7 @@ class ErrorBoundary extends Component<{ children: ComponentChildren }, { hasErro
 
 const AppContent = () => {
   const modelId = modelIdSignal.value;
+  const modelList = modelListSignal.value;
   const systemPrompt = systemPromptSignal.value;
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -172,6 +175,10 @@ const AppContent = () => {
   }, [isMenuOpen, loadPrompt]);
 
   useEffect(() => {
+    runOnComplete(() => fetchModels());
+  }, []);
+
+  useEffect(() => {
     setStoredItem(CONFIG.MODEL_STORAGE_KEY, modelIdSignal.value);
   }, [modelId]);
 
@@ -240,7 +247,7 @@ const AppContent = () => {
           >
             <div className="relative z-50 transition-opacity select-none px-2 py-1 rounded-lg overflow-hidden bg-black max-w-xs">
               <div className="text-xs font-semibold whitespace-pre-wrap normal-case text-center text-white">
-                Selected: {(CONFIG.AVAILABLE_MODELS as Record<string, string>)[modelId] || modelId}
+                Selected: {modelList[modelId] || modelId}
               </div>
             </div>
           </div>,
@@ -270,7 +277,7 @@ const AppContent = () => {
                   value={modelId}
                   onChange={(e) => (modelIdSignal.value = (e.target as HTMLSelectElement).value)}
                 >
-                  {Object.entries(CONFIG.AVAILABLE_MODELS).map(([id, name]) => (
+                  {Object.entries(modelList).map(([id, name]) => (
                     <option key={id} value={id}>
                       {name}
                     </option>

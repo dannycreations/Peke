@@ -49,13 +49,14 @@ export function runOnInteractive(callback: () => unknown): void {
  * ```
  *
  * @param {() => unknown} callback The function to execute upon full page load.
+ * @param {AddEventListenerOptions=} [options={}] Options to control the event listener behavior.
  * @returns {void}
  */
-export function runOnComplete(callback: () => unknown): void {
+export function runOnComplete(callback: () => unknown, options: AddEventListenerOptions = {}): void {
   if (document.readyState === 'complete') {
     callback();
   } else {
-    window.addEventListener('load', callback);
+    window.addEventListener('load', callback, options);
   }
 }
 

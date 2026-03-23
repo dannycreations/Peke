@@ -1,6 +1,8 @@
 export const CONFIG = {
   DEFAULT_MODEL_ID: 'gpt-5.2',
   AVAILABLE_MODELS: {
+    'gpt-5-3': 'GPT-5.3',
+    'gpt-5.3-mini': 'GPT-5.3-mini',
     'gpt-5.2': 'GPT-5.2',
     'gpt-5.2-mini': 'GPT-5.2-mini',
     'gpt-5.1': 'GPT-5.1',
@@ -12,5 +14,6 @@ export const CONFIG = {
   DEFAULT_SYSTEM_PROMPT: 'You are a helpful assistant.',
   UI_CONTAINER_SEL: 'div#conversation-header-actions',
   MODEL_STORAGE_KEY: 'ms_model_store',
+  MODEL_LIST_STORAGE_KEY: 'ms_model_list_store',
   PROMPT_STORAGE_KEY: 'ms_prompt_store',
 } as const;

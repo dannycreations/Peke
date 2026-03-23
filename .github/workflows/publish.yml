@@ -25,7 +25,6 @@ jobs:
 
       - name: Install and build
         run: |
-          bun install -g tsx
           bun install
           bun run prepack
 

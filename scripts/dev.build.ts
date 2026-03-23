@@ -11,7 +11,7 @@ let compileTimeoutId: NodeJS.Timeout | null;
 const DEBOUNCE_DELAY = 500;
 
 async function main(): Promise<void> {
-  exec('pnpx http-server dist -c5 -a 127.0.0.1 -p 8080 -s', { cwd: cwd() });
+  exec('bunx http-server dist -c5 -a 127.0.0.1 -p 8080 -s', { cwd: cwd() });
 
   console.log('Server running at http://127.0.0.1:8080');
 

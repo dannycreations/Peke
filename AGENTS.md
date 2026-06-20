@@ -1,4 +1,4 @@
-# TypeScript Development Guide
+# Peke Development Guide
 
 ## Guidelines
 

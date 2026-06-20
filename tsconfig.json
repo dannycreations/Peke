@@ -10,6 +10,7 @@
     "types": ["vite/client"],
 
     "outDir": "dist",
+    "rootDir": ".",
     "declaration": true,
     "noEmit": false,
 

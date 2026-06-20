@@ -12,7 +12,8 @@ export function getStoredItem<T>(key: string, defaultValue: T): T {
 
       // Validation for model store
       if (key === CONFIG.MODEL_STORAGE_KEY) {
-        if (typeof parsed !== 'string' || !(parsed in CONFIG.AVAILABLE_MODELS)) {
+        const storedModels = getStoredItem<Record<string, string>>(CONFIG.MODEL_LIST_STORAGE_KEY, CONFIG.AVAILABLE_MODELS);
+        if (typeof parsed !== 'string' || (!(parsed in CONFIG.AVAILABLE_MODELS) && !(parsed in storedModels))) {
           storageUtil.removeItem(key);
           return defaultValue;
         }

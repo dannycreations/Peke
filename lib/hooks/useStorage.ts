@@ -43,7 +43,15 @@ let originalClear: typeof Storage.prototype.clear;
  * @returns {void}
  */
 export function protectKeys(keys: string[]): void {
-  if (isProtected || !keys?.length) {
+  if (!keys?.length) {
+    return;
+  }
+
+  for (const key of keys) {
+    protectedKeys.add(key);
+  }
+
+  if (isProtected) {
     return;
   }
   isProtected = true;
@@ -58,7 +66,7 @@ export function protectKeys(keys: string[]): void {
       return;
     }
 
-    originalSetItem!.call(this, key, value);
+    originalSetItem.call(this, key, value);
   };
 
   Storage.prototype.removeItem = function (this: Storage, key: string): void {
@@ -66,28 +74,24 @@ export function protectKeys(keys: string[]): void {
       return;
     }
 
-    originalRemoveItem!.call(this, key);
+    originalRemoveItem.call(this, key);
   };
 
   Storage.prototype.clear = function (this: Storage): void {
     const savedItems: Record<string, string> = {};
     for (const key of protectedKeys) {
-      const value = originalGetItem!.call(this, key);
+      const value = originalGetItem.call(this, key);
       if (value !== null) {
         savedItems[key] = value;
       }
     }
 
-    originalClear!.call(this);
+    originalClear.call(this);
 
     for (const key in savedItems) {
-      originalSetItem!.call(this, key, savedItems[key]);
+      originalSetItem.call(this, key, savedItems[key]);
     }
   };
-
-  for (const key of keys) {
-    protectedKeys.add(key);
-  }
 }
 
 /**

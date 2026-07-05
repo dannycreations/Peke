@@ -84,19 +84,47 @@ const SPOOF_CONFIG: readonly SpoofConfig[] = [
 ];
 
 const STATE_CHANGE_MS: number = 100;
-const ACTIVITY_EMIT_MS: number = 60000;
+
+// Emitter timing constants
+const BURST_INTERVAL_MIN_MS: number = 15000;
+const BURST_INTERVAL_MAX_MS: number = 45000;
+const STEP_INTERVAL_MIN_MS: number = 150;
+const STEP_INTERVAL_MAX_MS: number = 400;
+
+const BURST_ACTIONS_MIN: number = 3;
+const BURST_ACTIONS_MAX: number = 8;
+
+const KEY_DURATION_MIN_MS: number = 50;
+const KEY_DURATION_MAX_MS: number = 150;
 
 class ActivitySpoofer {
   private isActive: boolean = false;
   private hasUserInteracted: boolean = false;
-  private intervalId: number | null = null;
   private debounceId: number | null = null;
   private audioContext: AudioContext | null = null;
   private operationQueue: Promise<void> = Promise.resolve();
 
+  // Activity emitter states
+  private activityTimeoutId: number | null = null;
+  private actionsRemainingInBurst: number = 0;
+  private lastRealX: number = window.innerWidth / 2;
+  private lastRealY: number = window.innerHeight / 2;
+  private virtualX: number = window.innerWidth / 2;
+  private virtualY: number = window.innerHeight / 2;
+  private burstTargetX: number = window.innerWidth / 2;
+  private burstTargetY: number = window.innerHeight / 2;
+
   private readonly originalDescriptors: Map<string, OriginalDescriptorInfo> = new Map();
 
   public constructor() {
+    // Track real mouse position when the user actually interacts with the page
+    const trackRealMouse = (e: MouseEvent | PointerEvent): void => {
+      this.lastRealX = e.clientX;
+      this.lastRealY = e.clientY;
+    };
+    window.addEventListener('mousemove', trackRealMouse, { capture: true, passive: true });
+    window.addEventListener('pointermove', trackRealMouse, { capture: true, passive: true });
+
     const handleUserInteraction = (): void => {
       if (this.hasUserInteracted) return;
       this.hasUserInteracted = true;
@@ -108,6 +136,8 @@ class ActivitySpoofer {
 
       if (this.isActive) {
         this.activate();
+      } else {
+        this.manageSilentAudio(true).catch(() => {});
       }
     };
 
@@ -120,13 +150,17 @@ class ActivitySpoofer {
       const isHidden = this.isOriginalPageHidden();
       const isFocused = this.isOriginalPageFocused();
 
-      if (isHidden || !isFocused) {
+      const shouldBeActive = isHidden || !isFocused;
+
+      if (shouldBeActive) {
+        this.manageSpoofs(true);
         this.activate();
       } else {
+        this.manageSpoofs(false);
         this.deactivate();
       }
 
-      if (event && this.isActive) {
+      if (event && (event.target === window || event.target === document)) {
         event.stopImmediatePropagation();
         event.preventDefault();
       }
@@ -148,13 +182,14 @@ class ActivitySpoofer {
         .then(async () => {
           if (this.isActive) return;
 
-          this.manageSpoofs(true);
           this.isActive = true;
 
           try {
             await this.manageSilentAudio(true);
-            if (this.isActive && this.intervalId === null) {
-              this.intervalId = window.setInterval(() => this.emitActivity(), ACTIVITY_EMIT_MS);
+            if (this.isActive && this.activityTimeoutId === null) {
+              this.virtualX = this.lastRealX;
+              this.virtualY = this.lastRealY;
+              this.scheduleNextActivity();
             }
           } catch {
             await this.manageSilentAudio(false);
@@ -171,13 +206,12 @@ class ActivitySpoofer {
         .then(async () => {
           if (!this.isActive) return;
 
-          if (this.intervalId !== null) {
-            window.clearInterval(this.intervalId);
-            this.intervalId = null;
-          }
-
-          this.manageSpoofs(false);
           this.isActive = false;
+
+          if (this.activityTimeoutId !== null) {
+            window.clearTimeout(this.activityTimeoutId);
+            this.activityTimeoutId = null;
+          }
 
           await this.manageSilentAudio(false);
         });
@@ -191,7 +225,8 @@ class ActivitySpoofer {
         const { target, key, spoof } = config;
 
         try {
-          const descriptorKey = `${target.constructor.name}.${key}`;
+          const targetName = target.constructor ? target.constructor.name : 'Unknown';
+          const descriptorKey = `${targetName}.${key}`;
           if (this.originalDescriptors.has(descriptorKey)) {
             continue;
           }
@@ -249,7 +284,14 @@ class ActivitySpoofer {
       return;
     }
 
-    await this.manageSilentAudio(false);
+    if (this.audioContext && this.audioContext.state !== 'closed') {
+      if (this.audioContext.state === 'suspended') {
+        try {
+          await this.audioContext.resume();
+        } catch {}
+      }
+      return;
+    }
 
     try {
       const AudioContextAPI = window.AudioContext || window.webkitAudioContext;
@@ -279,60 +321,179 @@ class ActivitySpoofer {
     }
   }
 
-  private emitActivity(): void {
-    try {
-      const mouseEvent = new MouseEvent('mousemove', {
-        bubbles: true,
-        cancelable: true,
-        view: window,
-        clientX: (Math.random() * 10) | 0,
-        clientY: (Math.random() * 10) | 0,
-      });
-      document.dispatchEvent(mouseEvent);
+  private scheduleNextActivity(): void {
+    if (this.activityTimeoutId !== null) {
+      window.clearTimeout(this.activityTimeoutId);
+      this.activityTimeoutId = null;
+    }
 
-      const keyEvent = new KeyboardEvent('keydown', {
-        key: 'Shift',
-        code: 'ShiftLeft',
-        keyCode: 16,
-        bubbles: true,
-        cancelable: true,
-      });
-      document.dispatchEvent(keyEvent);
+    if (!this.isActive) return;
+
+    let delay = 0;
+
+    if (this.actionsRemainingInBurst > 0) {
+      delay = Math.floor(Math.random() * (STEP_INTERVAL_MAX_MS - STEP_INTERVAL_MIN_MS + 1)) + STEP_INTERVAL_MIN_MS;
+    } else {
+      delay = Math.floor(Math.random() * (BURST_INTERVAL_MAX_MS - BURST_INTERVAL_MIN_MS + 1)) + BURST_INTERVAL_MIN_MS;
+      this.actionsRemainingInBurst = Math.floor(Math.random() * (BURST_ACTIONS_MAX - BURST_ACTIONS_MIN + 1)) + BURST_ACTIONS_MIN;
+      this.burstTargetX = Math.floor(Math.random() * window.innerWidth);
+      this.burstTargetY = Math.floor(Math.random() * window.innerHeight);
+    }
+
+    this.activityTimeoutId = window.setTimeout(() => {
+      this.performSimulatedActivity();
+      this.scheduleNextActivity();
+    }, delay);
+  }
+
+  private performSimulatedActivity(): void {
+    try {
+      if (this.actionsRemainingInBurst > 0) {
+        const rand = Math.random();
+        if (rand < 0.85) {
+          this.simulateMouseMove();
+        } else if (rand < 0.95) {
+          this.simulateScroll();
+        } else {
+          this.simulateKeyPress();
+        }
+        this.actionsRemainingInBurst--;
+      } else {
+        if (Math.random() < 0.3) {
+          this.simulateScroll();
+        } else {
+          this.simulateMouseMove();
+        }
+      }
     } catch {}
   }
 
+  private simulateMouseMove(): void {
+    const stepX = (this.burstTargetX - this.virtualX) * 0.15 + (Math.random() - 0.5) * 10;
+    const stepY = (this.burstTargetY - this.virtualY) * 0.15 + (Math.random() - 0.5) * 10;
+
+    this.virtualX = Math.max(0, Math.min(window.innerWidth, this.virtualX + stepX));
+    this.virtualY = Math.max(0, Math.min(window.innerHeight, this.virtualY + stepY));
+
+    const x = Math.round(this.virtualX);
+    const y = Math.round(this.virtualY);
+    const mx = Math.round(stepX);
+    const my = Math.round(stepY);
+
+    const targetEl = document.elementFromPoint(x, y) || document.documentElement;
+
+    const pointerEvent = new PointerEvent('pointermove', {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      view: window,
+      clientX: x,
+      clientY: y,
+      screenX: x + window.screenX,
+      screenY: y + window.screenY,
+      movementX: mx,
+      movementY: my,
+      pointerId: 1,
+      pointerType: 'mouse',
+      isPrimary: true,
+    });
+    targetEl.dispatchEvent(pointerEvent);
+
+    const mouseEvent = new MouseEvent('mousemove', {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      view: window,
+      clientX: x,
+      clientY: y,
+      screenX: x + window.screenX,
+      screenY: y + window.screenY,
+      movementX: mx,
+      movementY: my,
+    });
+    targetEl.dispatchEvent(mouseEvent);
+  }
+
+  private simulateScroll(): void {
+    const deltaY = Math.round((Math.random() - 0.5) * 60);
+    const x = Math.round(this.virtualX);
+    const y = Math.round(this.virtualY);
+    const targetEl = document.elementFromPoint(x, y) || document.documentElement;
+
+    const wheelEvent = new WheelEvent('wheel', {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      view: window,
+      clientX: x,
+      clientY: y,
+      deltaY: deltaY,
+      deltaMode: 0,
+    });
+    targetEl.dispatchEvent(wheelEvent);
+
+    window.dispatchEvent(new Event('scroll', { bubbles: false, cancelable: false }));
+    document.dispatchEvent(new Event('scroll', { bubbles: false, cancelable: false }));
+  }
+
+  private simulateKeyPress(): void {
+    const keys = [
+      { key: 'Shift', code: 'ShiftLeft', keyCode: 16 },
+      { key: 'Control', code: 'ControlLeft', keyCode: 17 },
+      { key: 'Alt', code: 'AltLeft', keyCode: 18 },
+    ];
+    const choice = keys[Math.floor(Math.random() * keys.length)];
+
+    const activeEl = document.activeElement || document.body || document.documentElement;
+
+    const keydownEvent = new KeyboardEvent('keydown', {
+      key: choice.key,
+      code: choice.code,
+      keyCode: choice.keyCode,
+      which: choice.keyCode,
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      view: window,
+    });
+    activeEl.dispatchEvent(keydownEvent);
+
+    window.setTimeout(
+      () => {
+        const keyupEvent = new KeyboardEvent('keyup', {
+          key: choice.key,
+          code: choice.code,
+          keyCode: choice.keyCode,
+          which: choice.keyCode,
+          bubbles: true,
+          cancelable: true,
+          composed: true,
+          view: window,
+        });
+        activeEl.dispatchEvent(keyupEvent);
+      },
+      Math.floor(Math.random() * (KEY_DURATION_MAX_MS - KEY_DURATION_MIN_MS + 1)) + KEY_DURATION_MIN_MS,
+    );
+  }
+
   private isOriginalPageHidden(): boolean {
-    if (!this.isActive) {
-      return document.hidden;
-    }
-
     const original = this.originalDescriptors.get('Document.hidden');
-    if (!original?.descriptor?.get) {
-      return false;
+    if (original?.descriptor && 'get' in original.descriptor && typeof original.descriptor.get === 'function') {
+      try {
+        return original.descriptor.get.call(document) as boolean;
+      } catch {}
     }
-
-    try {
-      return original.descriptor.get.call(document) as boolean;
-    } catch {
-      return false;
-    }
+    return document.hidden;
   }
 
   private isOriginalPageFocused(): boolean {
-    if (!this.isActive) {
-      return document.hasFocus();
-    }
-
     const original = this.originalDescriptors.get('Document.hasFocus');
-    if (typeof original?.descriptor?.value !== 'function') {
-      return true;
+    if (original?.descriptor && 'value' in original.descriptor && typeof original.descriptor.value === 'function') {
+      try {
+        return original.descriptor.value.call(document) as boolean;
+      } catch {}
     }
-
-    try {
-      return original.descriptor.value.call(document) as boolean;
-    } catch {
-      return true;
-    }
+    return document.hasFocus();
   }
 }
 

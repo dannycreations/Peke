@@ -1,6 +1,6 @@
 {
   "name": "openai-chatgpt",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "author": "dannycreations",
   "license": "GPL",
   "type": "module",
@@ -19,7 +19,7 @@
   "homepage": "https://github.com/dannycreations/Peke",
   "dependencies": {
     "@preact/signals": "^2.9.2",
-    "preact": "^10.29.2"
+    "preact": "^10.29.4"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.5"

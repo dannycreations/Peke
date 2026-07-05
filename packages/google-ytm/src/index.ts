@@ -32,8 +32,8 @@ function parsePlayCount(playString: string | null): number {
     return 0;
   }
 
-  for (const unit in MULTIPLIERS) {
-    if (text.includes(unit)) {
+  for (const unit of Object.keys(MULTIPLIERS)) {
+    if (text.endsWith(unit)) {
       return num * MULTIPLIERS[unit];
     }
   }
@@ -82,6 +82,10 @@ function sortPlaylist(): void {
     }
   }
 
+  const currentState = getPlaylistState(container);
+  lastSortedLength = currentState.length;
+  lastFirstElement = currentState.firstElement;
+
   if (isSorted) {
     return;
   }
@@ -98,10 +102,6 @@ function sortPlaylist(): void {
   }
 
   container.replaceChildren(fragment);
-
-  const currentState = getPlaylistState(container);
-  lastSortedLength = currentState.length;
-  lastFirstElement = currentState.firstElement;
 }
 
 function main(): void {
@@ -112,16 +112,26 @@ function main(): void {
 
   runOnObserver(
     (mutations) => {
-      const hasMeaningfulChange = mutations.some(
-        (m) =>
-          m.addedNodes.length > 0 &&
-          Array.prototype.some.call(
-            m.addedNodes,
-            (n) =>
-              n instanceof HTMLElement &&
-              (n.matches('ytmusic-responsive-list-item-renderer') || n.querySelector('ytmusic-responsive-list-item-renderer')),
-          ),
-      );
+      let hasMeaningfulChange = false;
+      const len = mutations.length;
+      for (let i = 0; i < len; i++) {
+        const m = mutations[i];
+        const addedNodesLen = m.addedNodes.length;
+        if (addedNodesLen > 0) {
+          for (let j = 0; j < addedNodesLen; j++) {
+            const n = m.addedNodes[j];
+            if (n instanceof HTMLElement) {
+              if (n.matches('ytmusic-responsive-list-item-renderer') || n.querySelector('ytmusic-responsive-list-item-renderer') !== null) {
+                hasMeaningfulChange = true;
+                break;
+              }
+            }
+          }
+        }
+        if (hasMeaningfulChange) {
+          break;
+        }
+      }
 
       if (!hasMeaningfulChange) {
         return;

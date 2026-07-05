@@ -1,6 +1,5 @@
 import { runOnObserver } from '@/helpers/autorun';
 import { useStorage } from '@/hooks/useStorage';
-import { delay } from 'es-toolkit';
 import $ from 'jquery';
 import { useCallback, useEffect, useRef } from 'preact/hooks';
 
@@ -70,22 +69,40 @@ export const useTaskRunner = ({ cycleDelay, stepDelay, waitDelay, onTimeout }: U
     [storage],
   );
 
-  const waitForElement = useCallback(async (rule: Rule, timeoutMs: number): Promise<boolean> => {
+  const cycleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stepTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const waitCleanupsRef = useRef<Set<() => void>>(new Set());
+
+  const cleanupWaitObservers = useCallback(() => {
+    for (const cleanup of waitCleanupsRef.current) {
+      cleanup();
+    }
+    waitCleanupsRef.current.clear();
+  }, []);
+
+  const waitForElement = useCallback((rule: Rule, timeoutMs: number): Promise<boolean> => {
     const { selector, options } = rule;
-    if (options.ignoreWait) return true;
-    if ($(selector).length > 0) return true;
-    if (timeoutMs <= 0) return false;
+    if (options.ignoreWait) return Promise.resolve(true);
+    if ($(selector).length > 0) return Promise.resolve(true);
+    if (timeoutMs <= 0) return Promise.resolve(false);
 
     return new Promise<boolean>((resolve) => {
       let timeoutId: ReturnType<typeof setTimeout> | null = null;
       let observer: MutationObserver | null = null;
 
       const cleanup = () => {
-        if (timeoutId) clearTimeout(timeoutId);
-        if (observer) observer.disconnect();
-        timeoutId = null;
-        observer = null;
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        if (observer) {
+          observer.disconnect();
+          observer = null;
+        }
+        waitCleanupsRef.current.delete(cleanup);
       };
+
+      waitCleanupsRef.current.add(cleanup);
 
       observer = runOnObserver(() => {
         if ($(selector).length > 0) {
@@ -126,8 +143,13 @@ export const useTaskRunner = ({ cycleDelay, stepDelay, waitDelay, onTimeout }: U
           return;
         }
 
-        if (!rule.options.ignoreWait && delaysRef.current.stepDelay > 0) {
-          await delay(delaysRef.current.stepDelay);
+        if (!rule.options.ignoreWait && delaysRef.current.stepDelay > 0 && isRunning.value) {
+          await new Promise<void>((resolve) => {
+            stepTimeoutRef.current = setTimeout(() => {
+              stepTimeoutRef.current = null;
+              resolve();
+            }, delaysRef.current.stepDelay);
+          });
         }
 
         useStore.batchUpdate(() => {
@@ -137,7 +159,12 @@ export const useTaskRunner = ({ cycleDelay, stepDelay, waitDelay, onTimeout }: U
       }
 
       if (isRunning.value && delaysRef.current.cycleDelay > 0) {
-        await delay(delaysRef.current.cycleDelay);
+        await new Promise<void>((resolve) => {
+          cycleTimeoutRef.current = setTimeout(() => {
+            cycleTimeoutRef.current = null;
+            resolve();
+          }, delaysRef.current.cycleDelay);
+        });
       }
     }
   }, [executeRuleAction, onTimeout, waitForElement]);
@@ -158,7 +185,17 @@ export const useTaskRunner = ({ cycleDelay, stepDelay, waitDelay, onTimeout }: U
 
     useStore.setIsRunning(false);
     useStore.setStatus(StatusState.STOPPED);
-  }, []);
+
+    if (cycleTimeoutRef.current) {
+      clearTimeout(cycleTimeoutRef.current);
+      cycleTimeoutRef.current = null;
+    }
+    if (stepTimeoutRef.current) {
+      clearTimeout(stepTimeoutRef.current);
+      stepTimeoutRef.current = null;
+    }
+    cleanupWaitObservers();
+  }, [cleanupWaitObservers]);
 
   useEffect(() => {
     let isCancelled: boolean = false;
@@ -172,8 +209,17 @@ export const useTaskRunner = ({ cycleDelay, stepDelay, waitDelay, onTimeout }: U
     }
     return () => {
       isCancelled = true;
+      if (cycleTimeoutRef.current) {
+        clearTimeout(cycleTimeoutRef.current);
+        cycleTimeoutRef.current = null;
+      }
+      if (stepTimeoutRef.current) {
+        clearTimeout(stepTimeoutRef.current);
+        stepTimeoutRef.current = null;
+      }
+      cleanupWaitObservers();
     };
-  }, [isRunning.value, runCycle]);
+  }, [isRunning.value, runCycle, cleanupWaitObservers]);
 
   return { start, stop };
 };

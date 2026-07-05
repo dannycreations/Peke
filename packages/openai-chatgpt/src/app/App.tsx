@@ -62,6 +62,8 @@ const AppContent = () => {
     }
   }, [isMenuOpen, isTooltipVisible, updateCoords]);
 
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const loadPrompt = useCallback(() => {
     try {
       const prompts = getStoredItem<Record<string, string>>(CONFIG.PROMPT_STORAGE_KEY, {});
@@ -90,7 +92,8 @@ const AppContent = () => {
         const promptKeys = Object.keys(prompts);
         for (let i = 0; i < promptKeys.length; i++) {
           const url = promptKeys[i];
-          if (url.startsWith('/c/') && !histories.has(url)) {
+          // Do not delete root fallback or currently active prompts
+          if (url.startsWith('/c/') && url !== currentPath && !histories.has(url)) {
             delete prompts[url];
             changed = true;
           }
@@ -131,7 +134,13 @@ const AppContent = () => {
       systemPromptSignal.value = trimmed;
 
       setIsSaved(true);
-      setTimeout(() => setIsSaved(false), 1000);
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      saveTimeoutRef.current = setTimeout(() => {
+        setIsSaved(false);
+        saveTimeoutRef.current = null;
+      }, 1000);
     }
   };
 
@@ -141,30 +150,31 @@ const AppContent = () => {
     const handleUrlChange = () => loadPrompt();
     window.addEventListener('popstate', handleUrlChange);
 
-    const originalPushState = window.history.pushState;
-    const originalReplaceState = window.history.replaceState;
+    // Patch history API globally on window object if not already patched
+    const win = window as any;
+    if (!win.__patchedHistoryAPI) {
+      win.__patchedHistoryAPI = true;
+      const originalPushState = window.history.pushState;
+      const originalReplaceState = window.history.replaceState;
 
-    window.history.pushState = function (this: History, ...args) {
-      const result = originalPushState.apply(this, args);
-      handleUrlChange();
-      return result;
-    };
+      window.history.pushState = function (this: History, ...args) {
+        const result = originalPushState.apply(this, args);
+        window.dispatchEvent(new Event('popstate'));
+        return result;
+      };
 
-    window.history.replaceState = function (this: History, ...args) {
-      const result = originalReplaceState.apply(this, args);
-      handleUrlChange();
-      return result;
-    };
+      window.history.replaceState = function (this: History, ...args) {
+        const result = originalReplaceState.apply(this, args);
+        window.dispatchEvent(new Event('popstate'));
+        return result;
+      };
+    }
 
     return () => {
       window.removeEventListener('popstate', handleUrlChange);
-
-      if (window.history.pushState === originalPushState) {
-        return;
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
       }
-
-      window.history.pushState = originalPushState;
-      window.history.replaceState = originalReplaceState;
     };
   }, [loadPrompt]);
 

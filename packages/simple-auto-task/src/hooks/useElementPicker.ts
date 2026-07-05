@@ -37,7 +37,13 @@ export const useElementPicker = ({ panelContainerRef, rulesPanelRef }: UseElemen
         return;
       }
 
-      if (panelContainerRef.current?.contains(target) || rulesPanelRef.current?.contains(target)) {
+      // Check if target is inside the shadow host sat-root
+      const shadowHost = document.getElementById('sat-root');
+      const isInsideShadowDOM =
+        shadowHost &&
+        (shadowHost === target || shadowHost.contains(target) || (target.getRootNode && target.getRootNode() === shadowHost.shadowRoot));
+
+      if (isInsideShadowDOM || panelContainerRef.current?.contains(target) || rulesPanelRef.current?.contains(target)) {
         if (lastHoveredElement.value) {
           lastHoveredElement.value.classList.remove('highlight-pick');
           useStore.setLastHoveredElement(null);
@@ -77,7 +83,13 @@ export const useElementPicker = ({ panelContainerRef, rulesPanelRef }: UseElemen
     const handlePickingClick = (event: MouseEvent): void => {
       const target = event.composedPath()[0] as Element;
 
-      if (isPaused || panelContainerRef.current?.contains(target) || rulesPanelRef.current?.contains(target)) {
+      // Prevent selecting elements inside sat-root shadow DOM
+      const shadowHost = document.getElementById('sat-root');
+      const isInsideShadowDOM =
+        shadowHost &&
+        (shadowHost === target || shadowHost.contains(target) || (target.getRootNode && target.getRootNode() === shadowHost.shadowRoot));
+
+      if (isPaused || isInsideShadowDOM || panelContainerRef.current?.contains(target) || rulesPanelRef.current?.contains(target)) {
         return;
       }
 

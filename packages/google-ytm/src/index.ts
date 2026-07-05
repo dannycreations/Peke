@@ -20,22 +20,26 @@ const MULTIPLIERS: Record<string, number> = {
   B: 1_000_000_000,
 } as const;
 
-function parsePlayCount(playString: string | null): number {
+export function parsePlayCount(playString: string | null): number {
   if (!playString) {
     return 0;
   }
 
   const text = playString.trim().toUpperCase();
-  const num = parseFloat(text);
+  const match = text.match(/^([\d.,]+)\s*([KMB])?\b/);
 
+  if (!match) {
+    return 0;
+  }
+
+  const num = parseFloat(match[1].replace(/,/g, ''));
   if (Number.isNaN(num)) {
     return 0;
   }
 
-  for (const unit of Object.keys(MULTIPLIERS)) {
-    if (text.endsWith(unit)) {
-      return num * MULTIPLIERS[unit];
-    }
+  const unit = match[2];
+  if (unit && unit in MULTIPLIERS) {
+    return num * MULTIPLIERS[unit];
   }
 
   return num;

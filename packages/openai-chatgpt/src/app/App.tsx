@@ -3,7 +3,7 @@ import { Component } from 'preact';
 import { createPortal } from 'preact/compat';
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 
-import { fetchModels } from '../helpers/modelHelper';
+import { fetchModels, formatModelId } from '../helpers/modelHelper';
 import { modelIdSignal, modelListSignal, systemPromptSignal } from '../stores/useStore';
 import { getStoredItem, setStoredItem } from '../utilities/storage';
 import { CONFIG } from './constants';
@@ -256,9 +256,7 @@ const AppContent = () => {
             }}
           >
             <div className="relative z-50 transition-opacity select-none px-2 py-1 rounded-lg overflow-hidden bg-black max-w-xs">
-              <div className="text-xs font-semibold whitespace-pre-wrap normal-case text-center text-white">
-                Selected: {modelList[modelId] || modelId}
-              </div>
+              <div className="text-xs font-semibold whitespace-pre-wrap normal-case text-center text-white">Selected: {formatModelId(modelId)}</div>
             </div>
           </div>,
           document.body,
@@ -284,16 +282,40 @@ const AppContent = () => {
                 <select
                   id="model-select"
                   className="w-full text-sm rounded-lg border border-token-border-medium bg-token-main-surface-secondary p-2 focus:outline-none focus:ring-1 focus:ring-token-main-surface-tertiary"
-                  value={modelId}
-                  onChange={(e) => (modelIdSignal.value = (e.target as HTMLSelectElement).value)}
+                  value={modelList.includes(modelId) ? modelId : 'custom'}
+                  onChange={(e) => {
+                    const val = (e.target as HTMLSelectElement).value;
+                    if (val !== 'custom') {
+                      modelIdSignal.value = val;
+                    } else {
+                      modelIdSignal.value = '';
+                    }
+                  }}
                 >
-                  {Object.entries(modelList).map(([id, name]) => (
-                    <option key={id} value={id}>
-                      {name}
-                    </option>
-                  ))}
+                  {modelList.map((id) => {
+                    return (
+                      <option key={id} value={id}>
+                        {formatModelId(id)}
+                      </option>
+                    );
+                  })}
+                  {!modelList.includes(modelId) && <option value={modelId}>Custom: {formatModelId(modelId)}</option>}
+                  <option value="custom">-- Custom Model ID --</option>
                 </select>
               </div>
+              {!modelList.includes(modelId) && (
+                <div className="px-2 py-1">
+                  <input
+                    type="text"
+                    placeholder="Enter custom model ID..."
+                    className="w-full text-sm rounded-lg border border-token-border-medium bg-token-main-surface-secondary p-2 focus:outline-none focus:ring-1 focus:ring-token-main-surface-tertiary"
+                    value={modelId}
+                    onInput={(e) => {
+                      modelIdSignal.value = (e.target as HTMLInputElement).value;
+                    }}
+                  />
+                </div>
+              )}
               <div className="flex group __menu-item px-4 text-token-text-tertiary bg-transparent cursor-default justify-between items-center">
                 <div className="cursor-text">System Prompt</div>
                 <button

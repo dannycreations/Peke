@@ -18,9 +18,9 @@
   },
   "homepage": "https://github.com/dannycreations/Peke",
   "dependencies": {
-    "@preact/signals": "^2.9.2",
+    "@preact/signals": "^2.9.3",
     "jquery": "^4.0.0",
-    "preact": "^10.29.4"
+    "preact": "^10.29.7"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.5",

@@ -1,7 +1,6 @@
 import { pascalCase } from 'es-toolkit';
 import { defineConfig, loadEnv, mergeConfig } from 'vite';
 import checker from 'vite-plugin-checker';
-import tsconfigPaths from 'vite-tsconfig-paths';
 import { configDefaults } from 'vitest/config';
 
 import { name } from '../package.json';
@@ -14,12 +13,12 @@ export function createViteConfig(options: UserConfig = {}): UserConfigFnObject {
     return mergeConfig(
       {
         plugins: [
-          tsconfigPaths(),
-          checker({
-            typescript: true,
-            enableBuild: true,
-          }),
-        ],
+          !env.VITEST &&
+            checker({
+              typescript: true,
+              enableBuild: true,
+            }),
+        ].filter(Boolean),
         build: {
           lib: {
             entry: 'src/index.ts',
@@ -56,6 +55,9 @@ export function createViteConfig(options: UserConfig = {}): UserConfigFnObject {
         },
         define: {
           'process.env.NODE_ENV': JSON.stringify(env.NODE_ENV),
+        },
+        resolve: {
+          tsconfigPaths: true,
         },
       },
       options,

@@ -12,10 +12,24 @@ function patch(): void {
   window.originalFetch = originalFetch;
 
   window.fetch = async (input, init = {}) => {
-    const url = typeof input === 'string' ? input : (input as Request).url;
-    const method = (init.method || (typeof input !== 'string' ? (input as Request).method : 'GET')).toUpperCase();
+    let url = '';
+    if (typeof input === 'string') {
+      url = input;
+    } else if (input instanceof URL) {
+      url = input.href;
+    } else if (input && typeof input === 'object' && 'url' in input) {
+      url = (input as Request).url;
+    }
 
-    if (method === 'POST' && url.endsWith('conversation')) {
+    let rawMethod = 'GET';
+    if (init && typeof init.method === 'string') {
+      rawMethod = init.method;
+    } else if (input && typeof input === 'object' && 'method' in input && typeof (input as Request).method === 'string') {
+      rawMethod = (input as Request).method;
+    }
+
+    const method = rawMethod.toUpperCase();
+    if (method === 'POST' && url && url.endsWith('conversation')) {
       try {
         const body = typeof init.body === 'string' ? JSON.parse(init.body) : init.body;
 
@@ -40,11 +54,8 @@ function patch(): void {
 
           init.body = JSON.stringify(body);
         }
-      } catch {
-        // Fallback to original fetch if body parsing fails
-      }
+      } catch {}
     }
-
     return originalFetch(input, init);
   };
 }
@@ -52,7 +63,6 @@ function patch(): void {
 function main(): void {
   const container = document.querySelector(CONFIG.UI_CONTAINER_SEL);
   if (!container) return;
-
   if (container.querySelector('#ms-react-root')) return;
 
   const rootElement = document.createElement('div');

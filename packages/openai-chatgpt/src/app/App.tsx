@@ -299,7 +299,7 @@ const AppContent = () => {
                       </option>
                     );
                   })}
-                  {!modelList.includes(modelId) && <option value={modelId}>Custom: {formatModelId(modelId)}</option>}
+                  {!modelList.includes(modelId) && modelId && <option value={modelId}>Custom: {formatModelId(modelId)}</option>}
                   <option value="custom">-- Custom Model ID --</option>
                 </select>
               </div>

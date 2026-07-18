@@ -18,13 +18,13 @@
   },
   "homepage": "https://github.com/dannycreations/Peke",
   "dependencies": {
-    "@preact/signals": "^2.9.3",
+    "@preact/signals": "^2.9.4",
     "jquery": "^4.0.0",
     "preact": "^10.29.7"
   },
   "devDependencies": {
-    "@preact/preset-vite": "^2.10.5",
-    "@tailwindcss/vite": "^4.3.2",
+    "@preact/preset-vite": "^2.10.6",
+    "@tailwindcss/vite": "^4.3.3",
     "@types/jquery": "^4.0.1"
   }
 }

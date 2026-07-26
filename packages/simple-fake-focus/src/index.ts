@@ -1,506 +1,422 @@
 import { runOnImmediate } from '@/helpers/autorun';
 
-interface SpoofConfig {
-  readonly target: object;
-  readonly key: string;
-  readonly spoof: PropertyDescriptor;
+const NATIVE_FN_BRAND = Symbol('native_fn_brand');
+
+function markAsNative<T extends Function>(fn: T, name: string, length = 0, accessorType: false | 'get' | 'set' = false): T {
+  const prefix = accessorType === 'get' ? 'get ' : accessorType === 'set' ? 'set ' : '';
+  const nativeString = `function ${prefix}${name}() { [native code] }`;
+
+  try {
+    Object.defineProperties(fn, {
+      name: { value: name, configurable: true, writable: false, enumerable: false },
+      length: { value: length, configurable: true, writable: false, enumerable: false },
+    });
+  } catch {}
+
+  Reflect.set(fn, NATIVE_FN_BRAND, nativeString);
+  return fn;
 }
 
-interface OriginalDescriptorInfo {
-  readonly target: object;
-  readonly key: string;
-  readonly descriptor: PropertyDescriptor | undefined;
+runOnImmediate(() => {
+  const origToString = Function.prototype.toString;
+
+  const customToString = markAsNative(
+    function toString(this: Function, ...args: unknown[]): string {
+      if (typeof this === 'function' && Reflect.has(this, NATIVE_FN_BRAND)) {
+        return Reflect.get(this, NATIVE_FN_BRAND) as string;
+      }
+      return Reflect.apply(origToString, this, args);
+    },
+    'toString',
+    0,
+  );
+
+  try {
+    Object.defineProperty(Function.prototype, 'toString', {
+      value: customToString,
+      writable: true,
+      configurable: true,
+      enumerable: false,
+    });
+  } catch {}
+});
+
+class AudioBackgroundClock {
+  private audioCtx: AudioContext | null = null;
+  private oscillator: OscillatorNode | null = null;
+  private gainNode: GainNode | null = null;
+  private intervalId: number | null = null;
+  private tasks = new Map<number, { targetTime: number; callback: () => void }>();
+  private nextTaskId = 1;
+  private isRunning = false;
+
+  public start(): void {
+    if (this.isRunning) return;
+
+    try {
+      if (typeof AudioContext === 'undefined') return;
+
+      this.audioCtx = new AudioContext();
+
+      this.oscillator = this.audioCtx.createOscillator();
+      this.gainNode = this.audioCtx.createGain();
+
+      this.gainNode.gain.setValueAtTime(0.00001, this.audioCtx.currentTime);
+      this.oscillator.connect(this.gainNode);
+      this.gainNode.connect(this.audioCtx.destination);
+
+      this.oscillator.start();
+
+      if (this.audioCtx.state === 'suspended') {
+        this.audioCtx.resume().catch(() => {});
+      }
+
+      this.intervalId = window.setInterval(() => this.processTicks(), 16);
+      this.isRunning = true;
+    } catch {
+      this.stop();
+    }
+  }
+
+  public stop(): void {
+    this.isRunning = false;
+    this.tasks.clear();
+
+    if (this.intervalId !== null) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+    }
+
+    if (this.oscillator) {
+      try {
+        this.oscillator.stop();
+        this.oscillator.disconnect();
+      } catch {}
+      this.oscillator = null;
+    }
+
+    if (this.gainNode) {
+      try {
+        this.gainNode.disconnect();
+      } catch {}
+      this.gainNode = null;
+    }
+
+    if (this.audioCtx && this.audioCtx.state !== 'closed') {
+      try {
+        this.audioCtx.close();
+      } catch {}
+      this.audioCtx = null;
+    }
+  }
+
+  public setTimeout(callback: () => void, delayMs: number): number {
+    const id = this.nextTaskId++;
+    const targetTime = performance.now() + delayMs;
+    this.tasks.set(id, { targetTime, callback });
+    return id;
+  }
+
+  public clearTimeout(id: number | null): void {
+    if (id !== null) {
+      this.tasks.delete(id);
+    }
+  }
+
+  private processTicks(): void {
+    if (this.tasks.size === 0) return;
+    const now = performance.now();
+
+    for (const [id, task] of Array.from(this.tasks.entries())) {
+      if (now >= task.targetTime) {
+        this.tasks.delete(id);
+        try {
+          task.callback();
+        } catch {}
+      }
+    }
+  }
 }
 
-const SPOOF_CONFIG: readonly SpoofConfig[] = [
-  {
-    target: Document.prototype,
-    key: 'hidden',
-    spoof: {
-      get: () => false,
-      configurable: true,
-    },
-  },
-  {
-    target: Document.prototype,
-    key: 'webkitHidden',
-    spoof: {
-      get: () => false,
-      configurable: true,
-    },
-  },
-  {
-    target: Document.prototype,
-    key: 'visibilityState',
-    spoof: {
-      get: () => 'visible',
-      configurable: true,
-    },
-  },
-  {
-    target: Document.prototype,
-    key: 'webkitVisibilityState',
-    spoof: {
-      get: () => 'visible',
-      configurable: true,
-    },
-  },
-  {
-    target: Document.prototype,
-    key: 'hasFocus',
-    spoof: {
-      value: () => true,
-      configurable: true,
-      writable: true,
-    },
-  },
-  {
-    target: Document.prototype,
-    key: 'onvisibilitychange',
-    spoof: {
-      get: () => null,
-      set: () => {},
-      configurable: true,
-    },
-  },
-  {
-    target: Document.prototype,
-    key: 'onwebkitvisibilitychange',
-    spoof: {
-      get: () => null,
-      set: () => {},
-      configurable: true,
-    },
-  },
-  {
-    target: window.Window.prototype,
-    key: 'focus',
-    spoof: {
-      value: Object.assign(() => {}, { toString: () => 'function focus() { [native code] }' }),
-      configurable: true,
-      writable: true,
-    },
-  },
-];
-
-const STATE_CHANGE_MS: number = 100;
-
-// Emitter timing constants
-const BURST_INTERVAL_MIN_MS: number = 15000;
-const BURST_INTERVAL_MAX_MS: number = 45000;
-const STEP_INTERVAL_MIN_MS: number = 150;
-const STEP_INTERVAL_MAX_MS: number = 400;
-
-const BURST_ACTIONS_MIN: number = 3;
-const BURST_ACTIONS_MAX: number = 8;
-
-const KEY_DURATION_MIN_MS: number = 50;
-const KEY_DURATION_MAX_MS: number = 150;
+interface UserInteraction {
+  readonly movementX: number;
+  readonly movementY: number;
+  readonly delayMs: number;
+}
 
 class ActivitySpoofer {
-  private isActive: boolean = false;
-  private hasUserInteracted: boolean = false;
-  private debounceId: number | null = null;
-  private audioContext: AudioContext | null = null;
-  private operationQueue: Promise<void> = Promise.resolve();
+  private isSpoofActive = false;
+  private hasUserInteracted = false;
+  private audioTimer = new AudioBackgroundClock();
+  private timerTaskId: number | null = null;
 
-  // Activity emitter states
-  private activityTimeoutId: number | null = null;
-  private actionsRemainingInBurst: number = 0;
-  private lastRealX: number = window.innerWidth / 2;
-  private lastRealY: number = window.innerHeight / 2;
-  private virtualX: number = window.innerWidth / 2;
-  private virtualY: number = window.innerHeight / 2;
-  private burstTargetX: number = window.innerWidth / 2;
-  private burstTargetY: number = window.innerHeight / 2;
+  private interactionQueue: UserInteraction[] = [];
+  private readonly maxQueueLength = 200;
+  private lastRecordTimestamp = 0;
+  private replayIndex = 0;
 
-  private readonly originalDescriptors: Map<string, OriginalDescriptorInfo> = new Map();
+  private currentX = typeof window !== 'undefined' ? window.innerWidth / 2 : 400;
+  private currentY = typeof window !== 'undefined' ? window.innerHeight / 2 : 300;
 
   public constructor() {
-    // Track real mouse position when the user actually interacts with the page
-    const trackRealMouse = (e: MouseEvent | PointerEvent): void => {
-      this.lastRealX = e.clientX;
-      this.lastRealY = e.clientY;
-    };
-    window.addEventListener('mousemove', trackRealMouse, { capture: true, passive: true });
-    window.addEventListener('pointermove', trackRealMouse, { capture: true, passive: true });
+    this.initUserInteractionTracking();
+    this.applyStealthOverrides();
+    this.initLifecycleListeners();
+  }
 
-    const handleUserInteraction = (): void => {
+  private initUserInteractionTracking(): void {
+    const trackUserMouse = (e: PointerEvent): void => {
+      if (!e.isTrusted) return;
+
+      const now = performance.now();
+      if (this.lastRecordTimestamp > 0) {
+        const delayMs = Math.min(Math.max(now - this.lastRecordTimestamp, 10), 200);
+
+        if (e.movementX !== 0 || e.movementY !== 0) {
+          if (this.interactionQueue.length >= this.maxQueueLength) {
+            this.interactionQueue.shift();
+          }
+          this.interactionQueue.push({
+            movementX: e.movementX,
+            movementY: e.movementY,
+            delayMs,
+          });
+        }
+      }
+      this.lastRecordTimestamp = now;
+
+      if (e.clientX > 0 || e.clientY > 0) {
+        this.currentX = e.clientX;
+        this.currentY = e.clientY;
+      }
+    };
+
+    window.addEventListener('pointermove', trackUserMouse, { capture: true, passive: true });
+
+    const handleUserGesture = (): void => {
       if (this.hasUserInteracted) return;
       this.hasUserInteracted = true;
 
-      window.removeEventListener('mousedown', handleUserInteraction, { capture: true });
-      window.removeEventListener('keydown', handleUserInteraction, { capture: true });
-      window.removeEventListener('touchstart', handleUserInteraction, { capture: true });
-      window.removeEventListener('pointerdown', handleUserInteraction, { capture: true });
+      window.removeEventListener('mousedown', handleUserGesture, { capture: true });
+      window.removeEventListener('keydown', handleUserGesture, { capture: true });
+      window.removeEventListener('touchstart', handleUserGesture, { capture: true });
+      window.removeEventListener('pointerdown', handleUserGesture, { capture: true });
 
-      if (this.isActive) {
-        this.activate();
-      } else {
-        this.manageSilentAudio(true).catch(() => {});
-      }
+      this.audioTimer.start();
+      this.evaluateState();
     };
 
-    window.addEventListener('mousedown', handleUserInteraction, { capture: true });
-    window.addEventListener('keydown', handleUserInteraction, { capture: true });
-    window.addEventListener('touchstart', handleUserInteraction, { capture: true });
-    window.addEventListener('pointerdown', handleUserInteraction, { capture: true });
-
-    const onStateChange = (event?: Event): void => {
-      const isHidden = this.isOriginalPageHidden();
-      const isFocused = this.isOriginalPageFocused();
-
-      const shouldBeActive = isHidden || !isFocused;
-
-      if (shouldBeActive) {
-        this.manageSpoofs(true);
-        this.activate();
-      } else {
-        this.manageSpoofs(false);
-        this.deactivate();
-      }
-
-      if (event && (event.target === window || event.target === document)) {
-        event.stopImmediatePropagation();
-        event.preventDefault();
-      }
-    };
-
-    onStateChange();
-
-    window.addEventListener('blur', onStateChange, { capture: true });
-    window.addEventListener('focus', onStateChange, { capture: true });
-    document.addEventListener('visibilitychange', onStateChange, { capture: true });
-    document.addEventListener('webkitvisibilitychange', onStateChange, { capture: true });
+    window.addEventListener('mousedown', handleUserGesture, { capture: true, passive: true });
+    window.addEventListener('keydown', handleUserGesture, { capture: true, passive: true });
+    window.addEventListener('touchstart', handleUserGesture, { capture: true, passive: true });
+    window.addEventListener('pointerdown', handleUserGesture, { capture: true, passive: true });
   }
 
-  private activate(): void {
-    if (this.debounceId !== null) window.clearTimeout(this.debounceId);
-    this.debounceId = window.setTimeout(() => {
-      this.operationQueue = this.operationQueue
-        .catch(() => {})
-        .then(async () => {
-          if (this.isActive) return;
+  private applyStealthOverrides(): void {
+    const self = this;
 
-          this.isActive = true;
+    const origHidden = Object.getOwnPropertyDescriptor(Document.prototype, 'hidden')?.get;
+    const origVisibilityState = Object.getOwnPropertyDescriptor(Document.prototype, 'visibilityState')?.get;
+    const origHasFocus = Document.prototype.hasFocus;
 
-          try {
-            await this.manageSilentAudio(true);
-            if (this.isActive && this.activityTimeoutId === null) {
-              this.virtualX = this.lastRealX;
-              this.virtualY = this.lastRealY;
-              this.scheduleNextActivity();
-            }
-          } catch {
-            await this.manageSilentAudio(false);
-          }
-        });
-    }, STATE_CHANGE_MS);
-  }
+    const getterHidden = markAsNative(
+      function hidden(this: Document): boolean {
+        if (!(this instanceof Document)) throw new TypeError('Illegal invocation');
+        if (self.isSpoofActive) return false;
+        return origHidden ? Reflect.apply(origHidden, this, []) : false;
+      },
+      'hidden',
+      0,
+      'get',
+    );
 
-  private deactivate(): void {
-    if (this.debounceId !== null) window.clearTimeout(this.debounceId);
-    this.debounceId = window.setTimeout(() => {
-      this.operationQueue = this.operationQueue
-        .catch(() => {})
-        .then(async () => {
-          if (!this.isActive) return;
+    const getterVisibilityState = markAsNative(
+      function visibilityState(this: Document): DocumentVisibilityState {
+        if (!(this instanceof Document)) throw new TypeError('Illegal invocation');
+        if (self.isSpoofActive) return 'visible';
+        return origVisibilityState ? Reflect.apply(origVisibilityState, this, []) : 'visible';
+      },
+      'visibilityState',
+      0,
+      'get',
+    );
 
-          this.isActive = false;
+    const fnHasFocus = markAsNative(
+      function hasFocus(this: Document): boolean {
+        if (!(this instanceof Document)) throw new TypeError('Illegal invocation');
+        if (self.isSpoofActive) return true;
+        return Reflect.apply(origHasFocus, this, []);
+      },
+      'hasFocus',
+      0,
+    );
 
-          if (this.activityTimeoutId !== null) {
-            window.clearTimeout(this.activityTimeoutId);
-            this.activityTimeoutId = null;
-          }
-
-          await this.manageSilentAudio(false);
-        });
-    }, STATE_CHANGE_MS);
-  }
-
-  private manageSpoofs(shouldApply: boolean): void {
-    if (shouldApply) {
-      for (let i = 0; i < SPOOF_CONFIG.length; i++) {
-        const config = SPOOF_CONFIG[i];
-        const { target, key, spoof } = config;
-
-        try {
-          const targetName = target.constructor ? target.constructor.name : 'Unknown';
-          const descriptorKey = `${targetName}.${key}`;
-          if (this.originalDescriptors.has(descriptorKey)) {
-            continue;
-          }
-
-          if (typeof spoof.get === 'function') {
-            Object.defineProperty(spoof.get, 'name', { value: key, configurable: true });
-            spoof.get.toString = () => `function get ${key}() { [native code] }`;
-          }
-
-          if (typeof spoof.value === 'function') {
-            Object.defineProperty(spoof.value, 'name', { value: key, configurable: true });
-            spoof.value.toString = () => `function ${key}() { [native code] }`;
-          }
-
-          const descriptor = Object.getOwnPropertyDescriptor(target, key);
-          this.originalDescriptors.set(descriptorKey, { target, key, descriptor });
-          Object.defineProperty(target, key, spoof);
-        } catch {}
-      }
-      return;
-    }
-
-    for (const original of this.originalDescriptors.values()) {
-      const { target, key, descriptor } = original;
-      try {
-        if (descriptor) {
-          Object.defineProperty(target, key, descriptor);
-        } else {
-          delete (target as Record<string, unknown>)[key];
-        }
-      } catch {}
-    }
-
-    this.originalDescriptors.clear();
-  }
-
-  private async manageSilentAudio(shouldStart: boolean): Promise<void> {
-    if (!shouldStart) {
-      const ctx = this.audioContext;
-      this.audioContext = null;
-
-      if (ctx && ctx.state !== 'closed') {
-        try {
-          await ctx.close();
-        } catch {}
-      }
-      return;
-    }
-
-    if (!this.hasUserInteracted) {
-      return;
-    }
-
-    if (this.audioContext?.state === 'running') {
-      return;
-    }
-
-    if (this.audioContext && this.audioContext.state !== 'closed') {
-      if (this.audioContext.state === 'suspended') {
-        try {
-          await this.audioContext.resume();
-        } catch {}
-      }
-      return;
-    }
+    const fnFocus = markAsNative(
+      function focus(this: Window): void {
+        if (self.isSpoofActive) return;
+        Window.prototype.focus.call(this);
+      },
+      'focus',
+      0,
+    );
 
     try {
-      const AudioContextAPI = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContextAPI) {
-        return;
-      }
+      Object.defineProperty(Document.prototype, 'hidden', {
+        get: getterHidden,
+        configurable: true,
+        enumerable: true,
+      });
 
-      const ctx = new AudioContextAPI();
-      this.audioContext = ctx;
+      Object.defineProperty(Document.prototype, 'visibilityState', {
+        get: getterVisibilityState,
+        configurable: true,
+        enumerable: true,
+      });
 
-      if (ctx.state === 'suspended') {
-        await ctx.resume();
-      }
-      if (ctx.state !== 'running') {
-        throw new Error('AudioContext failed to start or resume.');
-      }
+      Object.defineProperty(Document.prototype, 'hasFocus', {
+        value: fnHasFocus,
+        writable: true,
+        configurable: true,
+        enumerable: true,
+      });
 
-      const gainNode = ctx.createGain();
-      gainNode.gain.value = 0.00001;
-
-      const oscillator = ctx.createOscillator();
-      oscillator.frequency.value = 20;
-      oscillator.connect(gainNode).connect(ctx.destination);
-      oscillator.start();
-    } catch {
-      await this.manageSilentAudio(false);
-    }
-  }
-
-  private scheduleNextActivity(): void {
-    if (this.activityTimeoutId !== null) {
-      window.clearTimeout(this.activityTimeoutId);
-      this.activityTimeoutId = null;
-    }
-
-    if (!this.isActive) return;
-
-    let delay = 0;
-
-    if (this.actionsRemainingInBurst > 0) {
-      delay = Math.floor(Math.random() * (STEP_INTERVAL_MAX_MS - STEP_INTERVAL_MIN_MS + 1)) + STEP_INTERVAL_MIN_MS;
-    } else {
-      delay = Math.floor(Math.random() * (BURST_INTERVAL_MAX_MS - BURST_INTERVAL_MIN_MS + 1)) + BURST_INTERVAL_MIN_MS;
-      this.actionsRemainingInBurst = Math.floor(Math.random() * (BURST_ACTIONS_MAX - BURST_ACTIONS_MIN + 1)) + BURST_ACTIONS_MIN;
-      this.burstTargetX = Math.floor(Math.random() * window.innerWidth);
-      this.burstTargetY = Math.floor(Math.random() * window.innerHeight);
-    }
-
-    this.activityTimeoutId = window.setTimeout(() => {
-      this.performSimulatedActivity();
-      this.scheduleNextActivity();
-    }, delay);
-  }
-
-  private performSimulatedActivity(): void {
-    try {
-      if (this.actionsRemainingInBurst > 0) {
-        const rand = Math.random();
-        if (rand < 0.85) {
-          this.simulateMouseMove();
-        } else if (rand < 0.95) {
-          this.simulateScroll();
-        } else {
-          this.simulateKeyPress();
-        }
-        this.actionsRemainingInBurst--;
-      } else {
-        if (Math.random() < 0.3) {
-          this.simulateScroll();
-        } else {
-          this.simulateMouseMove();
-        }
-      }
+      Object.defineProperty(Window.prototype, 'focus', {
+        value: fnFocus,
+        writable: true,
+        configurable: true,
+        enumerable: true,
+      });
     } catch {}
   }
 
-  private simulateMouseMove(): void {
-    const stepX = (this.burstTargetX - this.virtualX) * 0.15 + (Math.random() - 0.5) * 10;
-    const stepY = (this.burstTargetY - this.virtualY) * 0.15 + (Math.random() - 0.5) * 10;
+  private initLifecycleListeners(): void {
+    const onStateChange = (): void => this.evaluateState();
 
-    this.virtualX = Math.max(0, Math.min(window.innerWidth, this.virtualX + stepX));
-    this.virtualY = Math.max(0, Math.min(window.innerHeight, this.virtualY + stepY));
+    window.addEventListener('blur', onStateChange, { capture: true, passive: true });
+    window.addEventListener('focus', onStateChange, { capture: true, passive: true });
+    document.addEventListener('visibilitychange', onStateChange, { capture: true, passive: true });
 
-    const x = Math.round(this.virtualX);
-    const y = Math.round(this.virtualY);
-    const mx = Math.round(stepX);
-    const my = Math.round(stepY);
+    this.evaluateState();
+  }
 
-    const targetEl = document.elementFromPoint(x, y) || document.documentElement;
+  private evaluateState(): void {
+    const isHidden = document.visibilityState === 'hidden';
+    const isUnfocused = !document.hasFocus();
 
-    const pointerEvent = new PointerEvent('pointermove', {
+    const shouldSpoof = isHidden || isUnfocused;
+
+    if (shouldSpoof && !this.isSpoofActive) {
+      this.activate();
+    } else if (!shouldSpoof && this.isSpoofActive) {
+      this.deactivate();
+    }
+  }
+
+  private activate(): void {
+    this.isSpoofActive = true;
+    if (this.hasUserInteracted) {
+      this.audioTimer.start();
+    }
+    this.scheduleNextStep();
+  }
+
+  private deactivate(): void {
+    this.isSpoofActive = false;
+    this.audioTimer.clearTimeout(this.timerTaskId);
+    this.timerTaskId = null;
+    this.replayIndex = 0;
+  }
+
+  private scheduleNextStep(): void {
+    if (!this.isSpoofActive) return;
+
+    let step: UserInteraction;
+
+    if (this.interactionQueue.length < 5) {
+      step = this.generateSyntheticStep();
+    } else {
+      step = this.interactionQueue[this.replayIndex];
+      this.replayIndex = (this.replayIndex + 1) % this.interactionQueue.length;
+    }
+
+    this.timerTaskId = this.audioTimer.setTimeout(() => {
+      this.performStep(step);
+      this.scheduleNextStep();
+    }, step.delayMs);
+  }
+
+  private generateSyntheticStep(): UserInteraction {
+    const angle = Math.random() * 0.4 - 0.2 + Date.now() / 1000;
+    const distance = Math.random() * 1.5 + 0.5;
+    return {
+      movementX: Math.cos(angle) * distance,
+      movementY: Math.sin(angle) * distance,
+      delayMs: Math.floor(Math.random() * 20 + 20),
+    };
+  }
+
+  private performStep(step: UserInteraction): void {
+    const width = window.innerWidth || 1024;
+    const height = window.innerHeight || 768;
+
+    let deltaX = step.movementX;
+    let deltaY = step.movementY;
+
+    if (this.currentX + deltaX < 40 || this.currentX + deltaX > width - 40) {
+      deltaX = -deltaX * 0.5;
+    }
+    if (this.currentY + deltaY < 40 || this.currentY + deltaY > height - 40) {
+      deltaY = -deltaY * 0.5;
+    }
+
+    this.currentX = Math.max(40, Math.min(width - 40, this.currentX + deltaX));
+    this.currentY = Math.max(40, Math.min(height - 40, this.currentY + deltaY));
+
+    this.dispatchPointerEvents(Math.round(this.currentX), Math.round(this.currentY), deltaX, deltaY);
+  }
+
+  private dispatchPointerEvents(x: number, y: number, movementX: number, movementY: number): void {
+    let targetEl: Element | null = null;
+
+    try {
+      targetEl = document.elementFromPoint(x, y);
+    } catch {}
+
+    if (!targetEl) {
+      targetEl = document.documentElement || document.body;
+    }
+
+    if (!targetEl) return;
+
+    const screenX = Math.round(x + window.screenX);
+    const screenY = Math.round(y + window.screenY);
+
+    const eventInit: PointerEventInit = {
       bubbles: true,
       cancelable: true,
       composed: true,
       view: window,
       clientX: x,
       clientY: y,
-      screenX: x + window.screenX,
-      screenY: y + window.screenY,
-      movementX: mx,
-      movementY: my,
+      screenX,
+      screenY,
+      movementX: Math.round(movementX),
+      movementY: Math.round(movementY),
       pointerId: 1,
       pointerType: 'mouse',
       isPrimary: true,
-    });
-    targetEl.dispatchEvent(pointerEvent);
+      buttons: 0,
+      button: -1,
+    };
 
-    const mouseEvent = new MouseEvent('mousemove', {
-      bubbles: true,
-      cancelable: true,
-      composed: true,
-      view: window,
-      clientX: x,
-      clientY: y,
-      screenX: x + window.screenX,
-      screenY: y + window.screenY,
-      movementX: mx,
-      movementY: my,
-    });
-    targetEl.dispatchEvent(mouseEvent);
-  }
+    try {
+      const pointerEvt = new PointerEvent('pointermove', eventInit);
+      const mouseEvt = new MouseEvent('mousemove', eventInit);
 
-  private simulateScroll(): void {
-    const deltaY = Math.round((Math.random() - 0.5) * 60);
-    const x = Math.round(this.virtualX);
-    const y = Math.round(this.virtualY);
-    const targetEl = document.elementFromPoint(x, y) || document.documentElement;
-
-    const wheelEvent = new WheelEvent('wheel', {
-      bubbles: true,
-      cancelable: true,
-      composed: true,
-      view: window,
-      clientX: x,
-      clientY: y,
-      deltaY: deltaY,
-      deltaMode: 0,
-    });
-    targetEl.dispatchEvent(wheelEvent);
-
-    window.dispatchEvent(new Event('scroll', { bubbles: false, cancelable: false }));
-    document.dispatchEvent(new Event('scroll', { bubbles: false, cancelable: false }));
-  }
-
-  private simulateKeyPress(): void {
-    const keys = [
-      { key: 'Shift', code: 'ShiftLeft', keyCode: 16 },
-      { key: 'Control', code: 'ControlLeft', keyCode: 17 },
-      { key: 'Alt', code: 'AltLeft', keyCode: 18 },
-    ];
-    const choice = keys[Math.floor(Math.random() * keys.length)];
-
-    const activeEl = document.activeElement || document.body || document.documentElement;
-
-    const keydownEvent = new KeyboardEvent('keydown', {
-      key: choice.key,
-      code: choice.code,
-      keyCode: choice.keyCode,
-      which: choice.keyCode,
-      bubbles: true,
-      cancelable: true,
-      composed: true,
-      view: window,
-    });
-    activeEl.dispatchEvent(keydownEvent);
-
-    window.setTimeout(
-      () => {
-        const keyupEvent = new KeyboardEvent('keyup', {
-          key: choice.key,
-          code: choice.code,
-          keyCode: choice.keyCode,
-          which: choice.keyCode,
-          bubbles: true,
-          cancelable: true,
-          composed: true,
-          view: window,
-        });
-        activeEl.dispatchEvent(keyupEvent);
-      },
-      Math.floor(Math.random() * (KEY_DURATION_MAX_MS - KEY_DURATION_MIN_MS + 1)) + KEY_DURATION_MIN_MS,
-    );
-  }
-
-  private isOriginalPageHidden(): boolean {
-    const original = this.originalDescriptors.get('Document.hidden');
-    if (original?.descriptor && 'get' in original.descriptor && typeof original.descriptor.get === 'function') {
-      try {
-        return original.descriptor.get.call(document) as boolean;
-      } catch {}
-    }
-    return document.hidden;
-  }
-
-  private isOriginalPageFocused(): boolean {
-    const original = this.originalDescriptors.get('Document.hasFocus');
-    if (original?.descriptor && 'value' in original.descriptor && typeof original.descriptor.value === 'function') {
-      try {
-        return original.descriptor.value.call(document) as boolean;
-      } catch {}
-    }
-    return document.hasFocus();
+      targetEl.dispatchEvent(pointerEvt);
+      targetEl.dispatchEvent(mouseEvt);
+    } catch {}
   }
 }
 
 runOnImmediate(() => new ActivitySpoofer());
-
-declare global {
-  interface Window {
-    readonly webkitAudioContext: typeof AudioContext;
-  }
-}

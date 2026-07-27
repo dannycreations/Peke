@@ -1,5 +1,5 @@
 {
   "name": "Simple Fake Focus",
   "icon": "https://cdn-icons-png.flaticon.com/512/172/172851.png",
-  "match": ["*://*.*/*"]
+  "match": ["*://*/*"]
 }

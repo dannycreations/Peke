@@ -11,7 +11,7 @@
     "check": "bun run format && turbo run check",
     "test": "turbo run test",
     "format": "prettier --write .",
-    "update": "turbo run update && npm-check-updates -u -f @types/node -t minor",
+    "update": "turbo run update && npm-check-updates -u -x @types/node",
     "prepack": "bun scripts/compile.build.ts",
     "prepare": "husky"
   },

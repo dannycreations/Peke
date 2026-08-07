@@ -4,6 +4,7 @@ import { debounce } from 'es-toolkit';
 interface PlaylistState {
   readonly length: number;
   readonly firstElement: string | null;
+  readonly lastElement: string | null;
 }
 
 interface SongData {
@@ -13,6 +14,7 @@ interface SongData {
 
 let lastSortedLength: number = 0;
 let lastFirstElement: string | null = null;
+let lastLastElement: string | null = null;
 
 const MULTIPLIERS: Record<string, number> = {
   K: 1_000,
@@ -49,17 +51,23 @@ function getPlaylistState(container: Element): PlaylistState {
   const items = container.querySelectorAll<Element>('ytmusic-responsive-list-item-renderer');
   const length = items.length;
   let firstElement: string | null = null;
+  let lastElement: string | null = null;
 
   if (length > 0) {
     const firstItem = items[0];
-    const link = firstItem.querySelector<HTMLAnchorElement>('a[href]');
+    const firstLink = firstItem.querySelector<HTMLAnchorElement>('a[href]');
+    if (firstLink?.href) {
+      firstElement = firstLink.href;
+    }
 
-    if (link?.href) {
-      firstElement = link.href;
+    const lastItem = items[length - 1];
+    const lastLink = lastItem.querySelector<HTMLAnchorElement>('a[href]');
+    if (lastLink?.href) {
+      lastElement = lastLink.href;
     }
   }
 
-  return { length, firstElement };
+  return { length, firstElement, lastElement };
 }
 
 function sortPlaylist(): void {
@@ -89,6 +97,7 @@ function sortPlaylist(): void {
   const currentState = getPlaylistState(container);
   lastSortedLength = currentState.length;
   lastFirstElement = currentState.firstElement;
+  lastLastElement = currentState.lastElement;
 
   if (isSorted) {
     return;
@@ -147,7 +156,10 @@ function main(): void {
       }
 
       const currentState = getPlaylistState(playlistContainer);
-      if (currentState.length !== lastSortedLength || currentState.firstElement !== lastFirstElement) {
+      const knownItemSizeChanged = currentState.length !== lastSortedLength;
+      const lastItemChanged = currentState.lastElement !== lastLastElement;
+      const firstItemChanged = currentState.firstElement !== lastFirstElement;
+      if (knownItemSizeChanged || lastItemChanged || firstItemChanged) {
         debouncedSortPlaylist();
       }
     },

@@ -6,4 +6,6 @@ export const CONFIG = {
   MODEL_STORAGE_KEY: 'ms_model_store',
   MODEL_LIST_STORAGE_KEY: 'ms_model_list_store',
   PROMPT_STORAGE_KEY: 'ms_prompt_store',
+  PROMPT_MAX_ENTRIES: 100,
+  PROMPT_DRAFT_TTL: 30 * 60 * 1000,
 } as const;

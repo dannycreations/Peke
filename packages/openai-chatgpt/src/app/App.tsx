@@ -3,9 +3,11 @@ import { Component } from 'preact';
 import { createPortal } from 'preact/compat';
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 
+import { onLocationChange } from '../helpers/locationHelper';
 import { fetchModels, formatModelId } from '../helpers/modelHelper';
+import { savePrompt, syncPrompt } from '../helpers/promptHelper';
 import { modelIdSignal, modelListSignal, systemPromptSignal } from '../stores/useStore';
-import { getStoredItem, setStoredItem } from '../utilities/storage';
+import { setStoredItem } from '../utilities/storage';
 import { CONFIG } from './constants';
 
 import type { ComponentChildren, ErrorInfo } from 'preact';
@@ -66,72 +68,17 @@ const AppContent = () => {
 
   const loadPrompt = useCallback(() => {
     try {
-      const prompts = getStoredItem<Record<string, string>>(CONFIG.PROMPT_STORAGE_KEY, {});
-      const currentPath = window.location.pathname;
-
-      if (currentPath.startsWith('/c/') && prompts['/'] && !prompts[currentPath]) {
-        prompts[currentPath] = prompts['/'];
-        delete prompts['/'];
-        setStoredItem(CONFIG.PROMPT_STORAGE_KEY, prompts);
-      }
-
-      const historyElement = document.querySelector('#history') || document.querySelector('nav');
-      if (historyElement) {
-        const hrefElements = historyElement.querySelectorAll<HTMLAnchorElement>('a[href^="/c/"]');
-        const histories = new Set<string>();
-
-        histories.add(currentPath);
-        for (let i = 0; i < hrefElements.length; i++) {
-          const href = hrefElements[i].getAttribute('href');
-          if (href) {
-            histories.add(href);
-          }
-        }
-
-        let changed = false;
-        const promptKeys = Object.keys(prompts);
-        for (let i = 0; i < promptKeys.length; i++) {
-          const url = promptKeys[i];
-          // Do not delete root fallback or currently active prompts
-          if (url.startsWith('/c/') && url !== currentPath && !histories.has(url)) {
-            delete prompts[url];
-            changed = true;
-          }
-        }
-
-        if (changed) {
-          setStoredItem(CONFIG.PROMPT_STORAGE_KEY, prompts);
-        }
-      }
-
-      const prompt = prompts[currentPath] || prompts['/'] || '';
-      systemPromptSignal.value = prompt;
+      systemPromptSignal.value = syncPrompt();
     } catch (error) {
       console.error('Error loading prompt:', error);
     }
   }, []);
 
-  const savePrompt = (value: string) => {
-    const trimmed = value.trim();
-    const currentPath = window.location.pathname;
-    const prompts = getStoredItem<Record<string, string>>(CONFIG.PROMPT_STORAGE_KEY, {});
+  const storePrompt = useCallback((value: string) => {
+    try {
+      if (!savePrompt(value)) return;
 
-    let changesMade = false;
-    if (trimmed) {
-      if (prompts[currentPath] !== trimmed) {
-        prompts[currentPath] = trimmed;
-        changesMade = true;
-      }
-    } else {
-      if (Object.prototype.hasOwnProperty.call(prompts, currentPath)) {
-        delete prompts[currentPath];
-        changesMade = true;
-      }
-    }
-
-    if (changesMade) {
-      setStoredItem(CONFIG.PROMPT_STORAGE_KEY, prompts);
-      systemPromptSignal.value = trimmed;
+      systemPromptSignal.value = value.trim();
 
       setIsSaved(true);
       if (saveTimeoutRef.current) {
@@ -141,37 +88,17 @@ const AppContent = () => {
         setIsSaved(false);
         saveTimeoutRef.current = null;
       }, 1000);
+    } catch (error) {
+      console.error('Error saving prompt:', error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadPrompt();
 
-    const handleUrlChange = () => loadPrompt();
-    window.addEventListener('popstate', handleUrlChange);
-
-    // Patch history API globally on window object if not already patched
-    const win = window as any;
-    if (!win.__patchedHistoryAPI) {
-      win.__patchedHistoryAPI = true;
-      const originalPushState = window.history.pushState;
-      const originalReplaceState = window.history.replaceState;
-
-      window.history.pushState = function (this: History, ...args) {
-        const result = originalPushState.apply(this, args);
-        window.dispatchEvent(new Event('popstate'));
-        return result;
-      };
-
-      window.history.replaceState = function (this: History, ...args) {
-        const result = originalReplaceState.apply(this, args);
-        window.dispatchEvent(new Event('popstate'));
-        return result;
-      };
-    }
-
+    const unwatch = onLocationChange(loadPrompt);
     return () => {
-      window.removeEventListener('popstate', handleUrlChange);
+      unwatch();
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
@@ -322,7 +249,7 @@ const AppContent = () => {
                   type="button"
                   title="Save Prompt"
                   className="p-1 -mr-2 rounded-md hover:bg-token-main-surface-tertiary"
-                  onClick={() => savePrompt(systemPrompt)}
+                  onClick={() => storePrompt(systemPrompt)}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill={isSaved ? 'green' : 'currentColor'} className="h-4 w-4">
                     <path
@@ -340,7 +267,7 @@ const AppContent = () => {
                   placeholder="Enter custom system prompt..."
                   className="w-full text-sm rounded-lg border border-token-border-medium bg-token-main-surface-secondary p-2 resize-none focus:outline-none focus:ring-1 focus:ring-token-main-surface-tertiary"
                   value={systemPrompt}
-                  onBlur={(e) => savePrompt((e.target as HTMLTextAreaElement).value)}
+                  onBlur={(e) => storePrompt((e.target as HTMLTextAreaElement).value)}
                   onChange={(e) => (systemPromptSignal.value = (e.target as HTMLTextAreaElement).value)}
                 />
               </div>

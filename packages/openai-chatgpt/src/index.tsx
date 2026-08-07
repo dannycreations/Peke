@@ -3,6 +3,7 @@ import { render } from 'preact';
 
 import { AppView } from './app/App';
 import { CONFIG } from './app/constants';
+import { notifyLocationChange, watchLocation } from './helpers/locationHelper';
 import { modelIdSignal, systemPromptSignal } from './stores/useStore';
 
 function patch(): void {
@@ -73,7 +74,15 @@ function main(): void {
 }
 
 patch();
-runOnObserver(main, { target: document.documentElement });
+watchLocation();
+runOnObserver(
+  () => {
+    // Safety net for url swaps that never reach the history api.
+    notifyLocationChange();
+    main();
+  },
+  { target: document.documentElement },
+);
 
 declare global {
   interface Window {

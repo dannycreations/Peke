@@ -18,7 +18,18 @@ function installToStringMask(): void {
 }
 
 function patch<F extends Function>(proto: object, prop: string, kind: 'get' | 'value', wrap: (real: F) => F): F {
-  const desc = Object.getOwnPropertyDescriptor(proto, prop)!;
+  const desc = Object.getOwnPropertyDescriptor(proto, prop);
+  if (!desc || typeof desc[kind] !== 'function') {
+    const delegate = function (this: unknown, ...args: unknown[]) {
+      const value = (this as Record<string, unknown>)[prop];
+      if (typeof value === 'function') {
+        return (value as Function).apply(this, args);
+      }
+      return undefined;
+    } as unknown as F;
+    return delegate;
+  }
+
   const real = desc[kind] as F;
   const fake = asNative(wrap(real), prop, kind === 'get' ? 'get ' : '');
   Object.defineProperty(proto, prop, { ...desc, [kind]: fake });

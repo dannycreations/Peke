@@ -46,4 +46,4 @@ async function main(): Promise<void> {
   console.log('Watching for changes in packages...');
 }
 
-main();
+void main();

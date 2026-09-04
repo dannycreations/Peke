@@ -121,7 +121,7 @@ const currentFile = posix.resolve(fileURLToPath(import.meta.url));
 const entryFile = posix.resolve(process.argv[1]);
 
 if (currentFile === entryFile) {
-  (async function () {
+  (async () => {
     await rm(OUTPUT_DIR, { force: true, recursive: true });
     await main();
     console.log('All builds successfully.');

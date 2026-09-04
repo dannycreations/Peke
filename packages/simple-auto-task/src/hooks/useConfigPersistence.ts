@@ -1,7 +1,7 @@
-import { useStorage } from '@/hooks/useStorage';
 import { debounce } from 'es-toolkit';
 import { useCallback, useEffect, useMemo, useState } from 'preact/hooks';
 
+import { useStorage } from '@peke/lib/hooks/useStorage';
 import { DEFAULT_CONFIG, STORAGE_CONFIG_KEY } from '../app/constants';
 import { selectorList, useStore } from '../stores/useStore';
 

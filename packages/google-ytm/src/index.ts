@@ -1,5 +1,6 @@
-import { runOnComplete, runOnObserver } from '@/helpers/autorun';
 import { debounce } from 'es-toolkit';
+
+import { runOnComplete, runOnObserver } from '@peke/lib/helpers/autorun';
 
 interface PlaylistState {
   readonly length: number;

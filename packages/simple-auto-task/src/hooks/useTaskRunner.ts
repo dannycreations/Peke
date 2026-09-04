@@ -1,8 +1,8 @@
-import { runOnObserver } from '@/helpers/autorun';
-import { useStorage } from '@/hooks/useStorage';
 import $ from 'jquery';
 import { useCallback, useEffect, useRef } from 'preact/hooks';
 
+import { runOnObserver } from '@peke/lib/helpers/autorun';
+import { useStorage } from '@peke/lib/hooks/useStorage';
 import { ActionType, HighlightState, StatusState, STORAGE_AUTORUN_KEY } from '../app/constants';
 import { isRunning, selectorList, useStore } from '../stores/useStore';
 

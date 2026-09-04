@@ -1,8 +1,8 @@
-import { useStorage } from '@/hooks/useStorage';
 import $ from 'jquery';
 import { memo } from 'preact/compat';
 import { useCallback, useEffect, useMemo, useRef } from 'preact/hooks';
 
+import { useStorage } from '@peke/lib/hooks/useStorage';
 import { MainPanel } from '../components/MainPanel';
 import { RulesPanel } from '../components/RulesPanel';
 import { useConfigPersistence } from '../hooks/useConfigPersistence';

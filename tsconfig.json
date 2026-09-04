@@ -27,7 +27,7 @@
     "skipLibCheck": true,
 
     "paths": {
-      "@/*": ["./lib/*"]
+      "@peke/lib/*": ["./lib/*"]
     }
   }
 }

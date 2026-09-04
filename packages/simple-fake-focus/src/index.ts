@@ -1,407 +1,270 @@
-import { runOnImmediate } from '@/helpers/autorun';
+import { runOnImmediate } from '@peke/lib/helpers/autorun';
 
-const NATIVE_FN_BRAND = Symbol('native_fn_brand');
+const nativeSource = new WeakMap<Function, string>();
 
-function markAsNative<T extends Function>(fn: T, name: string, length = 0, accessorType: false | 'get' | 'set' = false): T {
-  const prefix = accessorType === 'get' ? 'get ' : accessorType === 'set' ? 'set ' : '';
-  const nativeString = `function ${prefix}${name}() { [native code] }`;
-
-  try {
-    Object.defineProperties(fn, {
-      name: { value: name, configurable: true, writable: false, enumerable: false },
-      length: { value: length, configurable: true, writable: false, enumerable: false },
-    });
-  } catch {}
-
-  Reflect.set(fn, NATIVE_FN_BRAND, nativeString);
+function asNative<F extends Function>(fn: F, name: string, prefix: '' | 'get ' = ''): F {
+  Object.defineProperty(fn, 'name', { value: name, configurable: true });
+  nativeSource.set(fn, `function ${prefix}${name}() { [native code] }`);
   return fn;
 }
 
-runOnImmediate(() => {
-  const origToString = Function.prototype.toString;
+function installToStringMask(): void {
+  const original = Function.prototype.toString;
+  const masked = asNative(function toString(this: Function, ...args: unknown[]): string {
+    return nativeSource.get(this) ?? Reflect.apply(original, this, args);
+  }, 'toString');
 
-  const customToString = markAsNative(
-    function toString(this: Function, ...args: unknown[]): string {
-      if (typeof this === 'function' && Reflect.has(this, NATIVE_FN_BRAND)) {
-        return Reflect.get(this, NATIVE_FN_BRAND) as string;
-      }
-      return Reflect.apply(origToString, this, args);
-    },
-    'toString',
-    0,
-  );
+  Object.defineProperty(Function.prototype, 'toString', { value: masked, writable: true, configurable: true });
+}
 
-  try {
-    Object.defineProperty(Function.prototype, 'toString', {
-      value: customToString,
-      writable: true,
-      configurable: true,
-      enumerable: false,
-    });
-  } catch {}
-});
+function patch<F extends Function>(proto: object, prop: string, kind: 'get' | 'value', wrap: (real: F) => F): F {
+  const desc = Object.getOwnPropertyDescriptor(proto, prop)!;
+  const real = desc[kind] as F;
+  const fake = asNative(wrap(real), prop, kind === 'get' ? 'get ' : '');
+  Object.defineProperty(proto, prop, { ...desc, [kind]: fake });
+  return real;
+}
 
-class AudioBackgroundClock {
-  private audioCtx: AudioContext | null = null;
-  private oscillator: OscillatorNode | null = null;
-  private gainNode: GainNode | null = null;
-  private intervalId: number | null = null;
-  private tasks = new Map<number, { targetTime: number; callback: () => void }>();
-  private nextTaskId = 1;
-  private isRunning = false;
+class BackgroundTimer {
+  private audio: AudioContext | null = null;
+  private interval: number | undefined;
+  private pending: { at: number; run: () => void } | null = null;
 
-  public start(): void {
-    if (this.isRunning) return;
-
-    try {
-      if (typeof AudioContext === 'undefined') return;
-
-      this.audioCtx = new AudioContext();
-
-      this.oscillator = this.audioCtx.createOscillator();
-      this.gainNode = this.audioCtx.createGain();
-
-      this.gainNode.gain.setValueAtTime(0.00001, this.audioCtx.currentTime);
-      this.oscillator.connect(this.gainNode);
-      this.gainNode.connect(this.audioCtx.destination);
-
-      this.oscillator.start();
-
-      if (this.audioCtx.state === 'suspended') {
-        this.audioCtx.resume().catch(() => {});
-      }
-
-      this.intervalId = window.setInterval(() => this.processTicks(), 16);
-      this.isRunning = true;
-    } catch {
-      this.stop();
-    }
+  public schedule(run: () => void, delayMs: number): void {
+    this.pending = { at: performance.now() + delayMs, run };
+    this.interval ??= window.setInterval(() => this.tick(), 16);
   }
 
-  public stop(): void {
-    this.isRunning = false;
-    this.tasks.clear();
-
-    if (this.intervalId !== null) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
-    }
-
-    if (this.oscillator) {
-      try {
-        this.oscillator.stop();
-        this.oscillator.disconnect();
-      } catch {}
-      this.oscillator = null;
-    }
-
-    if (this.gainNode) {
-      try {
-        this.gainNode.disconnect();
-      } catch {}
-      this.gainNode = null;
-    }
-
-    if (this.audioCtx && this.audioCtx.state !== 'closed') {
-      try {
-        this.audioCtx.close();
-      } catch {}
-      this.audioCtx = null;
-    }
+  public cancel(): void {
+    this.pending = null;
   }
 
-  public setTimeout(callback: () => void, delayMs: number): number {
-    const id = this.nextTaskId++;
-    const targetTime = performance.now() + delayMs;
-    this.tasks.set(id, { targetTime, callback });
-    return id;
+  public setBackground(on: boolean): void {
+    if (on) this.ensureAudio();
+    void (on ? this.audio?.resume() : this.audio?.suspend())?.catch(() => {});
   }
 
-  public clearTimeout(id: number | null): void {
-    if (id !== null) {
-      this.tasks.delete(id);
-    }
+  private ensureAudio(): void {
+    if (this.audio || typeof AudioContext === 'undefined' || !navigator.userActivation?.hasBeenActive) return;
+
+    const ctx = new AudioContext();
+    const gain = ctx.createGain();
+    gain.gain.value = 0.0001;
+    const osc = ctx.createOscillator();
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    this.audio = ctx;
   }
 
-  private processTicks(): void {
-    if (this.tasks.size === 0) return;
-    const now = performance.now();
-
-    for (const [id, task] of Array.from(this.tasks.entries())) {
-      if (now >= task.targetTime) {
-        this.tasks.delete(id);
-        try {
-          task.callback();
-        } catch {}
-      }
+  private tick(): void {
+    if (!this.pending) {
+      clearInterval(this.interval);
+      this.interval = undefined;
+      return;
     }
+    if (performance.now() < this.pending.at) return;
+
+    const { run } = this.pending;
+    this.pending = null;
+    run();
   }
 }
 
-interface UserInteraction {
-  readonly movementX: number;
-  readonly movementY: number;
-  readonly delayMs: number;
+interface Movement {
+  readonly dx: number;
+  readonly dy: number;
+  readonly delay: number;
 }
 
-class ActivitySpoofer {
-  private isSpoofActive = false;
-  private hasUserInteracted = false;
-  private audioTimer = new AudioBackgroundClock();
-  private timerTaskId: number | null = null;
+const EDGE = 40;
+const MAX_SAMPLES = 300;
+const MIN_SAMPLES = 20;
+const STROKE_GAP_MS = 200;
 
-  private interactionQueue: UserInteraction[] = [];
-  private readonly maxQueueLength = 200;
-  private lastRecordTimestamp = 0;
-  private replayIndex = 0;
+const rand = (min: number, max: number): number => min + Math.random() * (max - min);
+const clamp = (v: number, min: number, max: number): number => Math.max(min, Math.min(max, v));
 
-  private currentX = typeof window !== 'undefined' ? window.innerWidth / 2 : 400;
-  private currentY = typeof window !== 'undefined' ? window.innerHeight / 2 : 300;
+class BackgroundActivity {
+  private active = false;
+  private readonly timer = new BackgroundTimer();
+  private readonly real: { visibility(): DocumentVisibilityState; focused(): boolean };
+
+  private x = innerWidth / 2;
+  private y = innerHeight / 2;
+  private screenOffsetX = screenX;
+  private screenOffsetY = screenY + (outerHeight - innerHeight);
+  private heading = rand(0, Math.PI * 2);
+
+  private readonly samples: Movement[] = [];
+  private lastSampleAt = 0;
+  private replayAt = 0;
+  private burstLeft = 0;
 
   public constructor() {
-    this.initUserInteractionTracking();
-    this.applyStealthOverrides();
-    this.initLifecycleListeners();
+    this.real = this.patchDom();
+    this.observeUser();
+    this.observeLifecycle();
+    this.sync();
   }
 
-  private initUserInteractionTracking(): void {
-    const trackUserMouse = (e: PointerEvent): void => {
-      if (!e.isTrusted) return;
+  private patchDom() {
+    const spoofing = (): boolean => this.active;
 
-      const now = performance.now();
-      if (this.lastRecordTimestamp > 0) {
-        const delayMs = Math.min(Math.max(now - this.lastRecordTimestamp, 10), 200);
-
-        if (e.movementX !== 0 || e.movementY !== 0) {
-          if (this.interactionQueue.length >= this.maxQueueLength) {
-            this.interactionQueue.shift();
-          }
-          this.interactionQueue.push({
-            movementX: e.movementX,
-            movementY: e.movementY,
-            delayMs,
-          });
-        }
-      }
-      this.lastRecordTimestamp = now;
-
-      if (e.clientX > 0 || e.clientY > 0) {
-        this.currentX = e.clientX;
-        this.currentY = e.clientY;
-      }
-    };
-
-    window.addEventListener('pointermove', trackUserMouse, { capture: true, passive: true });
-
-    const handleUserGesture = (): void => {
-      if (this.hasUserInteracted) return;
-      this.hasUserInteracted = true;
-
-      window.removeEventListener('mousedown', handleUserGesture, { capture: true });
-      window.removeEventListener('keydown', handleUserGesture, { capture: true });
-      window.removeEventListener('touchstart', handleUserGesture, { capture: true });
-      window.removeEventListener('pointerdown', handleUserGesture, { capture: true });
-
-      this.audioTimer.start();
-      this.evaluateState();
-    };
-
-    window.addEventListener('mousedown', handleUserGesture, { capture: true, passive: true });
-    window.addEventListener('keydown', handleUserGesture, { capture: true, passive: true });
-    window.addEventListener('touchstart', handleUserGesture, { capture: true, passive: true });
-    window.addEventListener('pointerdown', handleUserGesture, { capture: true, passive: true });
-  }
-
-  private applyStealthOverrides(): void {
-    const self = this;
-
-    const origHidden = Object.getOwnPropertyDescriptor(Document.prototype, 'hidden')?.get;
-    const origVisibilityState = Object.getOwnPropertyDescriptor(Document.prototype, 'visibilityState')?.get;
-    const origHasFocus = Document.prototype.hasFocus;
-
-    const getterHidden = markAsNative(
-      function hidden(this: Document): boolean {
-        if (!(this instanceof Document)) throw new TypeError('Illegal invocation');
-        if (self.isSpoofActive) return false;
-        return origHidden ? Reflect.apply(origHidden, this, []) : false;
-      },
-      'hidden',
-      0,
-      'get',
-    );
-
-    const getterVisibilityState = markAsNative(
-      function visibilityState(this: Document): DocumentVisibilityState {
-        if (!(this instanceof Document)) throw new TypeError('Illegal invocation');
-        if (self.isSpoofActive) return 'visible';
-        return origVisibilityState ? Reflect.apply(origVisibilityState, this, []) : 'visible';
-      },
+    const visibility = patch(
+      Document.prototype,
       'visibilityState',
-      0,
       'get',
+      (real) =>
+        function (this: Document): DocumentVisibilityState {
+          const actual = real.call(this);
+          return spoofing() ? 'visible' : actual;
+        },
     );
 
-    const fnHasFocus = markAsNative(
-      function hasFocus(this: Document): boolean {
-        if (!(this instanceof Document)) throw new TypeError('Illegal invocation');
-        if (self.isSpoofActive) return true;
-        return Reflect.apply(origHasFocus, this, []);
-      },
+    patch(
+      Document.prototype,
+      'hidden',
+      'get',
+      (real) =>
+        function (this: Document): boolean {
+          const actual = real.call(this);
+          return spoofing() ? false : actual;
+        },
+    );
+
+    const hasFocus = patch(
+      Document.prototype,
       'hasFocus',
-      0,
+      'value',
+      (real) =>
+        function (this: Document): boolean {
+          const actual = real.call(this);
+          return spoofing() ? true : actual;
+        },
     );
 
-    const fnFocus = markAsNative(
-      function focus(this: Window): void {
-        if (self.isSpoofActive) return;
-        Window.prototype.focus.call(this);
-      },
+    patch(
+      Window.prototype,
       'focus',
-      0,
+      'value',
+      (real) =>
+        function (this: Window): void {
+          if (!spoofing()) real.call(this);
+        },
     );
 
-    try {
-      Object.defineProperty(Document.prototype, 'hidden', {
-        get: getterHidden,
-        configurable: true,
-        enumerable: true,
-      });
-
-      Object.defineProperty(Document.prototype, 'visibilityState', {
-        get: getterVisibilityState,
-        configurable: true,
-        enumerable: true,
-      });
-
-      Object.defineProperty(Document.prototype, 'hasFocus', {
-        value: fnHasFocus,
-        writable: true,
-        configurable: true,
-        enumerable: true,
-      });
-
-      Object.defineProperty(Window.prototype, 'focus', {
-        value: fnFocus,
-        writable: true,
-        configurable: true,
-        enumerable: true,
-      });
-    } catch {}
-  }
-
-  private initLifecycleListeners(): void {
-    const onStateChange = (): void => this.evaluateState();
-
-    window.addEventListener('blur', onStateChange, { capture: true, passive: true });
-    window.addEventListener('focus', onStateChange, { capture: true, passive: true });
-    document.addEventListener('visibilitychange', onStateChange, { capture: true, passive: true });
-
-    this.evaluateState();
-  }
-
-  private evaluateState(): void {
-    const isHidden = document.visibilityState === 'hidden';
-    const isUnfocused = !document.hasFocus();
-
-    const shouldSpoof = isHidden || isUnfocused;
-
-    if (shouldSpoof && !this.isSpoofActive) {
-      this.activate();
-    } else if (!shouldSpoof && this.isSpoofActive) {
-      this.deactivate();
-    }
-  }
-
-  private activate(): void {
-    this.isSpoofActive = true;
-    if (this.hasUserInteracted) {
-      this.audioTimer.start();
-    }
-    this.scheduleNextStep();
-  }
-
-  private deactivate(): void {
-    this.isSpoofActive = false;
-    this.audioTimer.clearTimeout(this.timerTaskId);
-    this.timerTaskId = null;
-    this.replayIndex = 0;
-  }
-
-  private scheduleNextStep(): void {
-    if (!this.isSpoofActive) return;
-
-    let step: UserInteraction;
-
-    if (this.interactionQueue.length < 5) {
-      step = this.generateSyntheticStep();
-    } else {
-      step = this.interactionQueue[this.replayIndex];
-      this.replayIndex = (this.replayIndex + 1) % this.interactionQueue.length;
-    }
-
-    this.timerTaskId = this.audioTimer.setTimeout(() => {
-      this.performStep(step);
-      this.scheduleNextStep();
-    }, step.delayMs);
-  }
-
-  private generateSyntheticStep(): UserInteraction {
-    const angle = Math.random() * 0.4 - 0.2 + Date.now() / 1000;
-    const distance = Math.random() * 1.5 + 0.5;
     return {
-      movementX: Math.cos(angle) * distance,
-      movementY: Math.sin(angle) * distance,
-      delayMs: Math.floor(Math.random() * 20 + 20),
+      visibility: () => visibility.call(document) as DocumentVisibilityState,
+      focused: () => hasFocus.call(document) as boolean,
     };
   }
 
-  private performStep(step: UserInteraction): void {
-    const width = window.innerWidth || 1024;
-    const height = window.innerHeight || 768;
-
-    let deltaX = step.movementX;
-    let deltaY = step.movementY;
-
-    if (this.currentX + deltaX < 40 || this.currentX + deltaX > width - 40) {
-      deltaX = -deltaX * 0.5;
-    }
-    if (this.currentY + deltaY < 40 || this.currentY + deltaY > height - 40) {
-      deltaY = -deltaY * 0.5;
-    }
-
-    this.currentX = Math.max(40, Math.min(width - 40, this.currentX + deltaX));
-    this.currentY = Math.max(40, Math.min(height - 40, this.currentY + deltaY));
-
-    this.dispatchPointerEvents(Math.round(this.currentX), Math.round(this.currentY), deltaX, deltaY);
+  private observeUser(): void {
+    addEventListener('pointermove', (e) => e.isTrusted && this.record(e), { capture: true, passive: true });
   }
 
-  private dispatchPointerEvents(x: number, y: number, movementX: number, movementY: number): void {
-    let targetEl: Element | null = null;
+  private observeLifecycle(): void {
+    const onChange = (e: Event): void => {
+      this.sync();
+      if (this.active)
+        // Page never sees the background transition
+        e.stopImmediatePropagation();
+    };
 
-    try {
-      targetEl = document.elementFromPoint(x, y);
-    } catch {}
+    addEventListener('blur', onChange, true);
+    addEventListener('focus', onChange, true);
+    document.addEventListener('visibilitychange', onChange, true);
+  }
 
-    if (!targetEl) {
-      targetEl = document.documentElement || document.body;
+  private record(e: PointerEvent): void {
+    const gap = performance.now() - this.lastSampleAt;
+    this.lastSampleAt += gap;
+
+    this.x = e.clientX;
+    this.y = e.clientY;
+    this.screenOffsetX = e.screenX - e.clientX;
+    this.screenOffsetY = e.screenY - e.clientY;
+
+    // New stroke, not a step
+    if (gap > STROKE_GAP_MS || (e.movementX === 0 && e.movementY === 0)) return;
+
+    this.samples.push({ dx: e.movementX, dy: e.movementY, delay: gap });
+    if (this.samples.length > MAX_SAMPLES) this.samples.shift();
+  }
+
+  private sync(): void {
+    const shouldSpoof = this.real.visibility() === 'hidden' || !this.real.focused();
+    if (shouldSpoof === this.active) return;
+
+    this.active = shouldSpoof;
+    this.timer.setBackground(shouldSpoof);
+
+    if (shouldSpoof) this.step();
+    else this.timer.cancel();
+  }
+
+  private step(): void {
+    if (!this.active) return;
+
+    if (this.burstLeft <= 0) {
+      this.burstLeft = Math.round(rand(4, 40));
+      this.replayAt = Math.floor(Math.random() * this.samples.length);
+      this.timer.schedule(() => this.step(), rand(400, 4000));
+      return;
     }
 
-    if (!targetEl) return;
+    this.burstLeft--;
+    const move = this.samples.length >= MIN_SAMPLES ? this.replay() : this.wander();
+    this.moveBy(move.dx * rand(0.85, 1.15), move.dy * rand(0.85, 1.15));
+    this.timer.schedule(() => this.step(), move.delay * rand(0.85, 1.15));
+  }
 
-    const screenX = Math.round(x + window.screenX);
-    const screenY = Math.round(y + window.screenY);
+  private replay(): Movement {
+    const move = this.samples[this.replayAt];
+    this.replayAt = (this.replayAt + 1) % this.samples.length;
+    return move;
+  }
 
-    const eventInit: PointerEventInit = {
+  private wander(): Movement {
+    this.heading += rand(-0.5, 0.5);
+    const speed = rand(0.5, 3);
+    return { dx: Math.cos(this.heading) * speed, dy: Math.sin(this.heading) * speed, delay: rand(12, 40) };
+  }
+
+  private moveBy(dx: number, dy: number): void {
+    const maxX = innerWidth - EDGE;
+    const maxY = innerHeight - EDGE;
+
+    if (this.x + dx < EDGE || this.x + dx > maxX) {
+      dx = -dx;
+      this.heading = Math.PI - this.heading;
+    }
+    if (this.y + dy < EDGE || this.y + dy > maxY) {
+      dy = -dy;
+      this.heading = -this.heading;
+    }
+
+    this.x = clamp(this.x + dx, EDGE, maxX);
+    this.y = clamp(this.y + dy, EDGE, maxY);
+    this.dispatch(dx, dy);
+  }
+
+  private dispatch(dx: number, dy: number): void {
+    const clientX = Math.round(this.x);
+    const clientY = Math.round(this.y);
+    const target = document.elementFromPoint(clientX, clientY) ?? document.documentElement;
+
+    const init: PointerEventInit = {
       bubbles: true,
       cancelable: true,
       composed: true,
       view: window,
-      clientX: x,
-      clientY: y,
-      screenX,
-      screenY,
-      movementX: Math.round(movementX),
-      movementY: Math.round(movementY),
+      clientX,
+      clientY,
+      screenX: clientX + this.screenOffsetX,
+      screenY: clientY + this.screenOffsetY,
+      movementX: Math.round(dx),
+      movementY: Math.round(dy),
       pointerId: 1,
       pointerType: 'mouse',
       isPrimary: true,
@@ -409,14 +272,12 @@ class ActivitySpoofer {
       button: -1,
     };
 
-    try {
-      const pointerEvt = new PointerEvent('pointermove', eventInit);
-      const mouseEvt = new MouseEvent('mousemove', eventInit);
-
-      targetEl.dispatchEvent(pointerEvt);
-      targetEl.dispatchEvent(mouseEvt);
-    } catch {}
+    target.dispatchEvent(new PointerEvent('pointermove', init));
+    target.dispatchEvent(new MouseEvent('mousemove', { ...init, button: 0 }));
   }
 }
 
-runOnImmediate(() => new ActivitySpoofer());
+runOnImmediate(() => {
+  installToStringMask();
+  new BackgroundActivity();
+});

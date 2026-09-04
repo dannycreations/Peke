@@ -1,8 +1,8 @@
-import { runOnComplete } from '@/helpers/autorun';
 import { Component } from 'preact';
 import { createPortal } from 'preact/compat';
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 
+import { runOnComplete } from '@peke/lib/helpers/autorun';
 import { onLocationChange } from '../helpers/locationHelper';
 import { fetchModels, formatModelId } from '../helpers/modelHelper';
 import { savePrompt, syncPrompt } from '../helpers/promptHelper';

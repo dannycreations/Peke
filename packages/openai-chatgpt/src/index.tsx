@@ -1,6 +1,6 @@
-import { runOnObserver } from '@/helpers/autorun';
 import { render } from 'preact';
 
+import { runOnObserver } from '@peke/lib/helpers/autorun';
 import { AppView } from './app/App';
 import { CONFIG } from './app/constants';
 import { notifyLocationChange, watchLocation } from './helpers/locationHelper';

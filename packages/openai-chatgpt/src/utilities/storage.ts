@@ -1,5 +1,4 @@
-import { useStorage } from '@/hooks/useStorage';
-
+import { useStorage } from '@peke/lib/hooks/useStorage';
 import { CONFIG } from '../app/constants';
 
 const storageUtil = useStorage();

@@ -1,10 +1,12 @@
 import { memo } from 'preact/compat';
-import { useEffect, useMemo, useRef } from 'preact/hooks';
+import { useEffect, useRef } from 'preact/hooks';
 
-import { HIGHLIGHT_BG_COLORS, HIGHLIGHT_TEXT_COLORS, STATUS_COLORS, STATUS_TEXTS } from '../app/constants';
+import { HIGHLIGHT_STYLES, STATUS_DISPLAY } from '../app/constants';
+import { stopKeyboardPropagation } from '../utilities/dom';
 
-import type { CSSProperties, RefObject, TargetedEvent } from 'preact';
-import type { HighlightState, Rule, StatusState } from '../app/types';
+import type { CSSProperties, RefObject } from 'preact';
+import type { HighlightState, StatusState } from '../app/constants';
+import type { DelayKey, Rule } from '../app/types';
 
 interface MainPanelProps {
   readonly cycleDelay: number;
@@ -13,7 +15,7 @@ interface MainPanelProps {
   readonly isAutoRun: boolean;
   readonly isRunning: boolean;
   readonly onAddSelector: () => void;
-  readonly onConfigChange: (event: TargetedEvent<HTMLInputElement>) => void;
+  readonly onConfigChange: (name: DelayKey, value: string) => void;
   readonly onListClick: (event: MouseEvent) => void;
   readonly onPick: () => void;
   readonly onStart: () => void;
@@ -30,16 +32,12 @@ interface MainPanelProps {
 
 interface DelayConfig {
   readonly id: string;
-  readonly name: 'stepDelay' | 'waitDelay' | 'cycleDelay';
+  readonly name: DelayKey;
   readonly label: string;
   readonly min: number;
   readonly step: number;
   readonly value: number;
 }
-
-const handleKeyDown = (event: KeyboardEvent): void => {
-  event.stopPropagation();
-};
 
 export const MainPanel = memo<MainPanelProps>(
   ({
@@ -74,22 +72,19 @@ export const MainPanel = memo<MainPanelProps>(
       }
     }, [isRunning, highlightedRuleIndex]);
 
-    const delayConfigs = useMemo<ReadonlyArray<DelayConfig>>(
-      () => [
-        { id: 'step-delay', name: 'stepDelay', label: 'Step Delay (ms)', min: 0, step: 10, value: stepDelay },
-        { id: 'wait-delay', name: 'waitDelay', label: 'Wait Delay (ms)', min: 1000, step: 100, value: waitDelay },
-        { id: 'cycle-delay', name: 'cycleDelay', label: 'Cycle Delay (ms)', min: 100, step: 100, value: cycleDelay },
-      ],
-      [stepDelay, waitDelay, cycleDelay],
-    );
+    const delayConfigs: ReadonlyArray<DelayConfig> = [
+      { id: 'step-delay', name: 'stepDelay', label: 'Step Delay (ms)', min: 0, step: 10, value: stepDelay },
+      { id: 'wait-delay', name: 'waitDelay', label: 'Wait Delay (ms)', min: 1000, step: 100, value: waitDelay },
+      { id: 'cycle-delay', name: 'cycleDelay', label: 'Cycle Delay (ms)', min: 100, step: 100, value: cycleDelay },
+    ];
 
     return (
       <div id="panel-container" ref={mainPanelRef} style={style}>
         <div id="panel-header" className="panel-header">
           <span>Simple Auto Task</span>
           <span id="status-indicator">
-            <span id="status-dot" style={{ backgroundColor: STATUS_COLORS[status] }}></span>
-            <span id="status-text">{STATUS_TEXTS[status]}</span>
+            <span id="status-dot" style={{ backgroundColor: STATUS_DISPLAY[status].color }}></span>
+            <span id="status-text">{STATUS_DISPLAY[status].text}</span>
           </span>
         </div>
 
@@ -104,7 +99,7 @@ export const MainPanel = memo<MainPanelProps>(
               style={{ marginBottom: '4px' }}
               type="text"
               onKeyDown={(e) => {
-                handleKeyDown(e);
+                stopKeyboardPropagation(e);
                 if (e.key === 'Enter') {
                   onAddSelector();
                 }
@@ -127,31 +122,21 @@ export const MainPanel = memo<MainPanelProps>(
             {selectorList.length === 0 ? (
               <div id="no-rules-message">No rules yet. Add one above.</div>
             ) : (
-              selectorList.map((rule, index) => {
-                const isHighlighted = highlightedRuleIndex === index;
-                const style = isHighlighted
-                  ? {
-                      backgroundColor: HIGHLIGHT_BG_COLORS[highlightState],
-                      color: HIGHLIGHT_TEXT_COLORS[highlightState],
-                    }
-                  : undefined;
-
-                return (
-                  <div key={rule.id} className="selector-item" style={style}>
-                    <span className="selector-text" title={rule.selector}>
-                      {index + 1}. {rule.selector}
-                    </span>
-                    <div className="btn-group">
-                      <button className="selector-item-btn selector-item-config-btn" data-rule-id={rule.id} title={`Configure rule ${index + 1}`}>
-                        &#9881;
-                      </button>
-                      <button className="selector-item-btn selector-item-remove-btn" data-rule-id={rule.id} title={`Remove rule ${index + 1}`}>
-                        &times;
-                      </button>
-                    </div>
+              selectorList.map((rule, index) => (
+                <div key={rule.id} className="selector-item" style={highlightedRuleIndex === index ? HIGHLIGHT_STYLES[highlightState] : undefined}>
+                  <span className="selector-text" title={rule.selector}>
+                    {index + 1}. {rule.selector}
+                  </span>
+                  <div className="btn-group">
+                    <button className="selector-item-btn selector-item-config-btn" data-rule-id={rule.id} title={`Configure rule ${index + 1}`}>
+                      &#9881;
+                    </button>
+                    <button className="selector-item-btn selector-item-remove-btn" data-rule-id={rule.id} title={`Remove rule ${index + 1}`}>
+                      &times;
+                    </button>
                   </div>
-                );
-              })
+                </div>
+              ))
             )}
           </div>
 
@@ -166,8 +151,8 @@ export const MainPanel = memo<MainPanelProps>(
                 step={config.step}
                 type="number"
                 value={config.value}
-                onChange={onConfigChange}
-                onKeyDown={handleKeyDown}
+                onChange={(event) => onConfigChange(config.name, event.currentTarget.value)}
+                onKeyDown={stopKeyboardPropagation}
               />
             </label>
           ))}

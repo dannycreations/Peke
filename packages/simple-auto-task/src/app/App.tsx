@@ -1,8 +1,8 @@
+import { batch } from '@preact/signals';
 import $ from 'jquery';
 import { memo } from 'preact/compat';
 import { useCallback, useEffect, useMemo, useRef } from 'preact/hooks';
 
-import { useStorage } from '@peke/lib/hooks/useStorage';
 import { MainPanel } from '../components/MainPanel';
 import { RulesPanel } from '../components/RulesPanel';
 import { useConfigPersistence } from '../hooks/useConfigPersistence';
@@ -10,20 +10,23 @@ import { useElementPicker } from '../hooks/useElementPicker';
 import { usePanelDrag } from '../hooks/usePanelDrag';
 import { useTaskRunner } from '../hooks/useTaskRunner';
 import {
+  addRule,
   editingRuleId,
   highlightedRuleIndex,
   highlightState,
   isAutoRun,
   isPicking,
   isRunning,
+  removeRule,
   selectorList,
   status,
-  useStore,
+  updateRule,
 } from '../stores/useStore';
-import { ActionType, DEFAULT_CONFIG, PANEL_SPACING, StatusState, STORAGE_AUTORUN_KEY } from './constants';
+import { getStorage } from '../utilities/storage';
+import { ActionType, PANEL_SPACING, StatusState, STORAGE_AUTORUN_KEY } from './constants';
 
-import type { CSSProperties, TargetedEvent } from 'preact';
-import type { Rule } from './types';
+import type { CSSProperties } from 'preact';
+import type { DelayKey, Position, Rule } from './types';
 
 const PickerClue = memo(() => {
   return (
@@ -34,7 +37,7 @@ const PickerClue = memo(() => {
 });
 
 export const App = memo(() => {
-  const storage = useStorage();
+  const storage = getStorage();
   const panelContainerRef = useRef<HTMLDivElement | null>(null);
   const rulesPanelRef = useRef<HTMLDivElement | null>(null);
   const selectorInputRef = useRef<HTMLInputElement | null>(null);
@@ -56,14 +59,14 @@ export const App = memo(() => {
         wakeLockSentinelRef.current.addEventListener('release', () => {
           wakeLockSentinelRef.current = null;
         });
-      } catch (err: any) {
-        console.error(`Could not acquire wake lock: ${err.name}, ${err.message}`);
+      } catch (error) {
+        console.error('Could not acquire wake lock:', error);
       }
     }
   }, []);
 
   const onTimeout = useCallback(() => {
-    useStore.setIsRunning(false);
+    isRunning.value = false;
     saveConfigNow();
     storage.setItem(STORAGE_AUTORUN_KEY, 'true');
     window.location.reload();
@@ -81,17 +84,12 @@ export const App = memo(() => {
     rulesPanelRef,
   });
 
-  const handleDragEnd = useCallback(() => {
-    if (panelContainerRef.current) {
-      const top: number = panelContainerRef.current.offsetTop;
-      const left: number | null = panelContainerRef.current.style.left ? parseInt(panelContainerRef.current.style.left, 10) : null;
-      const right: number | null =
-        panelContainerRef.current.style.right && panelContainerRef.current.style.right !== 'auto'
-          ? parseInt(panelContainerRef.current.style.right, 10)
-          : null;
-      updateConfig({ position: { top, left, right } });
-    }
-  }, [updateConfig]);
+  const handleDragEnd = useCallback(
+    (position: Position) => {
+      updateConfig({ position });
+    },
+    [updateConfig],
+  );
 
   usePanelDrag({
     mainPanelRef: panelContainerRef,
@@ -99,14 +97,8 @@ export const App = memo(() => {
     rulesPanelRef,
   });
 
-  const editingRule = useMemo(() => {
-    return editingRuleId.value !== null ? selectorList.value.find((r) => r.id === editingRuleId.value) || null : null;
-  }, [editingRuleId.value, selectorList.value]);
-
-  const editingRuleIndex = useMemo(
-    () => (editingRuleId.value !== null ? selectorList.value.findIndex((r) => r.id === editingRuleId.value) : -1),
-    [editingRuleId.value, selectorList.value],
-  );
+  const editingRuleIndex = editingRuleId.value === null ? -1 : selectorList.value.findIndex((rule) => rule.id === editingRuleId.value);
+  const editingRule = editingRuleIndex === -1 ? null : selectorList.value[editingRuleIndex];
 
   const handleAddSelector = useCallback(() => {
     const newSelector = selectorInputRef.current?.value.trim();
@@ -115,7 +107,7 @@ export const App = memo(() => {
       return;
     }
 
-    useStore.addRule({
+    addRule({
       action: ActionType.CLICK,
       options: {
         ignoreWait: false,
@@ -130,15 +122,11 @@ export const App = memo(() => {
   }, []);
 
   const handleCloseRules = useCallback(() => {
-    if (rulesPanelRef.current) {
-      rulesPanelRef.current.style.display = 'none';
-    }
-    useStore.setEditingRuleId(null);
+    editingRuleId.value = null;
   }, []);
 
   const handleConfigChange = useCallback(
-    (event: TargetedEvent<HTMLInputElement>) => {
-      const { name, value } = event.currentTarget;
+    (name: DelayKey, value: string) => {
       const numericValue = parseInt(value, 10);
       if (!isNaN(numericValue)) {
         updateConfig({ [name]: numericValue });
@@ -149,7 +137,7 @@ export const App = memo(() => {
 
   const handleListClick = useCallback(
     (event: MouseEvent) => {
-      const target = (event.target as HTMLElement).closest('.selector-item-btn') as HTMLElement;
+      const target = (event.target as HTMLElement).closest('.selector-item-btn') as HTMLElement | null;
       if (!target) {
         return;
       }
@@ -163,24 +151,28 @@ export const App = memo(() => {
         if (editingRuleId.value === ruleId) {
           handleCloseRules();
         }
-        useStore.removeRule(ruleId);
-      } else if (target.classList.contains('selector-item-config-btn')) {
-        if (editingRuleId.value === ruleId) {
-          handleCloseRules();
-        } else {
-          const ruleToEdit = selectorList.value.find((r) => r.id === ruleId);
-          if (ruleToEdit) {
-            useStore.setEditingRuleId(ruleId);
-            if (rulesPanelRef.current && panelContainerRef.current) {
-              const userPanelRect = panelContainerRef.current.getBoundingClientRect();
-              rulesPanelRef.current.style.top = `${userPanelRect.top}px`;
-              rulesPanelRef.current.style.left = `${userPanelRect.left + userPanelRect.width + PANEL_SPACING}px`;
-              rulesPanelRef.current.style.right = 'auto';
-              rulesPanelRef.current.style.display = 'block';
-            }
-          }
-        }
+        removeRule(ruleId);
+        return;
       }
+
+      if (!target.classList.contains('selector-item-config-btn')) {
+        return;
+      }
+
+      if (editingRuleId.value === ruleId) {
+        handleCloseRules();
+        return;
+      }
+
+      if (!selectorList.value.some((rule) => rule.id === ruleId) || !panelContainerRef.current || !rulesPanelRef.current) {
+        return;
+      }
+
+      editingRuleId.value = ruleId;
+      const panelRect = panelContainerRef.current.getBoundingClientRect();
+      rulesPanelRef.current.style.top = `${panelRect.top}px`;
+      rulesPanelRef.current.style.left = `${panelRect.left + panelRect.width + PANEL_SPACING}px`;
+      rulesPanelRef.current.style.right = 'auto';
     },
     [handleCloseRules],
   );
@@ -197,41 +189,34 @@ export const App = memo(() => {
     if (!inputEl) {
       return;
     }
+
+    const flash = (className: string) => {
+      inputEl.classList.add(className);
+      setTimeout(() => {
+        inputEl.classList.remove(className);
+      }, 1500);
+    };
+
     inputEl.classList.remove('input-error', 'input-success');
 
-    const showError = () => {
-      inputEl.classList.add('input-error');
-      setTimeout(() => {
-        inputEl.classList.remove('input-error');
-      }, 1500);
-    };
-
-    const showSuccess = () => {
-      inputEl.classList.add('input-success');
-      setTimeout(() => {
-        inputEl.classList.remove('input-success');
-      }, 1500);
-    };
-
     if (!selector) {
-      showError();
+      flash('input-error');
       return;
     }
 
     try {
-      const element = $(selector).first();
-      if (element.length > 0) {
-        showSuccess();
-        element.each((_, el) => {
-          const originalOutline = el.style.outline;
-          el.style.outline = '2px solid #22c55e';
-          setTimeout(() => (el.style.outline = originalOutline), 1500);
-        });
-      } else {
-        showError();
+      const element = $(selector).first()[0];
+      if (!element) {
+        flash('input-error');
+        return;
       }
+
+      flash('input-success');
+      const originalOutline = element.style.outline;
+      element.style.outline = '2px solid #22c55e';
+      setTimeout(() => (element.style.outline = originalOutline), 1500);
     } catch {
-      showError();
+      flash('input-error');
     }
   }, []);
 
@@ -241,7 +226,7 @@ export const App = memo(() => {
 
   const handleSaveRule = useCallback(
     (updatedRule: Rule) => {
-      useStore.updateRule(updatedRule);
+      updateRule(updatedRule);
       handleCloseRules();
     },
     [handleCloseRules],
@@ -256,9 +241,9 @@ export const App = memo(() => {
   const handleStop = useCallback(() => {
     releaseWakeLock();
     stopRunner();
-    useStore.batchUpdate(() => {
-      useStore.setIsAutoRun(false);
-      useStore.setStatus(StatusState.STOPPED);
+    batch(() => {
+      isAutoRun.value = false;
+      status.value = StatusState.STOPPED;
     });
     storage.setItem(STORAGE_AUTORUN_KEY, 'false');
   }, [stopRunner, releaseWakeLock, storage]);
@@ -268,14 +253,13 @@ export const App = memo(() => {
       return;
     }
 
-    const autoStart = storage.getItem(STORAGE_AUTORUN_KEY);
-    if (autoStart !== 'true') {
+    if (storage.getItem(STORAGE_AUTORUN_KEY) !== 'true') {
       return;
     }
 
-    useStore.batchUpdate(() => {
-      useStore.setIsAutoRun(true);
-      useStore.setStatus(StatusState.WAITING);
+    batch(() => {
+      isAutoRun.value = true;
+      status.value = StatusState.WAITING;
     });
 
     const startWhenReady = () => {
@@ -284,7 +268,7 @@ export const App = memo(() => {
       }
 
       startRunner();
-      useStore.setIsAutoRun(false);
+      isAutoRun.value = false;
     };
 
     if (document.readyState === 'complete') {
@@ -303,14 +287,11 @@ export const App = memo(() => {
   }, [startRunner]);
 
   const mainPanelStyle = useMemo<CSSProperties>(() => {
-    if (!config.position) {
-      return {};
-    }
     const { top, left, right } = config.position;
     return {
       top: `${top}px`,
       left: left !== null ? `${left}px` : 'auto',
-      right: left !== null ? 'auto' : `${right ?? DEFAULT_CONFIG.position.right}px`,
+      right: left !== null || right === null ? 'auto' : `${right}px`,
     };
   }, [config.position]);
 

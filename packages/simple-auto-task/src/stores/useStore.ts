@@ -1,18 +1,19 @@
-import { batch, signal } from '@preact/signals';
+import { signal } from '@preact/signals';
 
-import { HighlightState as HighlightStateConst, StatusState as StatusStateConst } from '../app/constants';
+import { HighlightState, StatusState } from '../app/constants';
 
-import type { ActionType, HighlightState, Rule, RuleOptions, StatusState } from '../app/types';
+import type { ActionType } from '../app/constants';
+import type { Rule, RuleOptions } from '../app/types';
 
 export const editingRuleId = signal<number | null>(null);
-export const highlightState = signal<HighlightState>(HighlightStateConst.IDLE);
+export const highlightState = signal<HighlightState>(HighlightState.IDLE);
 export const highlightedRuleIndex = signal<number | null>(null);
 export const isAutoRun = signal<boolean>(false);
 export const isPicking = signal<boolean>(false);
 export const isRunning = signal<boolean>(false);
 export const lastHoveredElement = signal<Element | null>(null);
 export const selectorList = signal<ReadonlyArray<Rule>>([]);
-export const status = signal<StatusState>(StatusStateConst.IDLE);
+export const status = signal<StatusState>(StatusState.IDLE);
 
 interface AddRulePayload {
   readonly action: ActionType;
@@ -20,64 +21,24 @@ interface AddRulePayload {
   readonly selector: string;
 }
 
-let counter = 0;
+let lastRuleId = 0;
 
-export const useStore = {
-  addRule: (newRuleData: AddRulePayload) => {
-    selectorList.value = selectorList.value.concat({ ...newRuleData, id: ++counter });
-  },
+export function addRule(newRuleData: AddRulePayload): void {
+  selectorList.value = selectorList.value.concat({ ...newRuleData, id: ++lastRuleId });
+}
 
-  removeRule: (idToRemove: number) => {
-    selectorList.value = selectorList.value.filter((rule) => rule.id !== idToRemove);
-  },
+export function removeRule(idToRemove: number): void {
+  selectorList.value = selectorList.value.filter((rule) => rule.id !== idToRemove);
+}
 
-  setEditingRuleId: (id: number | null) => {
-    editingRuleId.value = id;
-  },
+export function updateRule(updatedRule: Rule): void {
+  const rules = selectorList.value;
+  const index = rules.findIndex((rule) => rule.id === updatedRule.id);
+  if (index === -1) {
+    return;
+  }
 
-  setHighlightState: (state: HighlightState) => {
-    highlightState.value = state;
-  },
-
-  setHighlightedRuleIndex: (index: number | null) => {
-    highlightedRuleIndex.value = index;
-  },
-
-  setIsAutoRun: (value: boolean) => {
-    isAutoRun.value = value;
-  },
-
-  setIsPicking: (value: boolean) => {
-    isPicking.value = value;
-  },
-
-  setIsRunning: (value: boolean) => {
-    isRunning.value = value;
-  },
-
-  setLastHoveredElement: (element: Element | null) => {
-    lastHoveredElement.value = element;
-  },
-
-  setSelectorList: (list: ReadonlyArray<Rule>) => {
-    selectorList.value = list;
-  },
-
-  setStatus: (value: StatusState) => {
-    status.value = value;
-  },
-
-  updateRule: (updatedRule: Rule) => {
-    const list = selectorList.value;
-    const index = list.findIndex((r) => r.id === updatedRule.id);
-    if (index !== -1) {
-      const newList = [...list];
-      newList[index] = updatedRule;
-      selectorList.value = newList;
-    }
-  },
-
-  batchUpdate: (updates: () => void) => {
-    batch(updates);
-  },
-} as const;
+  const updatedRules = [...rules];
+  updatedRules[index] = updatedRule;
+  selectorList.value = updatedRules;
+}

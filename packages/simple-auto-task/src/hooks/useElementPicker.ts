@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'preact/hooks';
 
-import { isPicking, isRunning, lastHoveredElement, useStore } from '../stores/useStore';
+import { ROOT_ELEMENT_ID } from '../app/constants';
+import { isPicking, isRunning, lastHoveredElement } from '../stores/useStore';
 import { generateSelector } from '../utilities/dom';
 
 import type { RefObject } from 'preact';
@@ -20,7 +21,7 @@ export const useElementPicker = ({ panelContainerRef, rulesPanelRef }: UseElemen
   const startPicking = useCallback((onElementPicked: (selector: string) => void) => {
     if (isRunning.value || isPicking.value) return;
     onElementPickedRef.current = onElementPicked;
-    useStore.setIsPicking(true);
+    isPicking.value = true;
   }, []);
 
   useEffect(() => {
@@ -28,26 +29,26 @@ export const useElementPicker = ({ panelContainerRef, rulesPanelRef }: UseElemen
       return;
     }
 
-    let isPaused: boolean = false;
+    let isPaused = false;
     let lastClientX = 0;
     let lastClientY = 0;
+    let hoverRafId: number | null = null;
 
-    const highlightElement = (target: Element | null): void => {
-      if (!target) {
-        return;
-      }
+    const isOwnElement = (target: Element): boolean => {
+      const shadowHost = document.getElementById(ROOT_ELEMENT_ID);
+      const isInsideShadowRoot =
+        shadowHost !== null && (shadowHost === target || shadowHost.contains(target) || target.getRootNode() === shadowHost.shadowRoot);
+      return isInsideShadowRoot || panelContainerRef.current?.contains(target) === true || rulesPanelRef.current?.contains(target) === true;
+    };
 
-      // Check if target is inside the shadow host sat-root
-      const shadowHost = document.getElementById('sat-root');
-      const isInsideShadowDOM =
-        shadowHost &&
-        (shadowHost === target || shadowHost.contains(target) || (target.getRootNode && target.getRootNode() === shadowHost.shadowRoot));
+    const clearHighlight = (): void => {
+      lastHoveredElement.value?.classList.remove('highlight-pick');
+      lastHoveredElement.value = null;
+    };
 
-      if (isInsideShadowDOM || panelContainerRef.current?.contains(target) || rulesPanelRef.current?.contains(target)) {
-        if (lastHoveredElement.value) {
-          lastHoveredElement.value.classList.remove('highlight-pick');
-          useStore.setLastHoveredElement(null);
-        }
+    const highlightElement = (target: Element): void => {
+      if (isOwnElement(target)) {
+        clearHighlight();
         return;
       }
 
@@ -55,74 +56,58 @@ export const useElementPicker = ({ panelContainerRef, rulesPanelRef }: UseElemen
         return;
       }
 
-      if (lastHoveredElement.value) {
-        lastHoveredElement.value.classList.remove('highlight-pick');
-      }
-
-      if (target?.classList) {
-        target.classList.add('highlight-pick');
-        useStore.setLastHoveredElement(target);
-      }
+      clearHighlight();
+      target.classList.add('highlight-pick');
+      lastHoveredElement.value = target;
     };
 
-    let hoverRafId: number | null = null;
     const handlePickingHover = (event: MouseEvent): void => {
       lastClientX = event.clientX;
       lastClientY = event.clientY;
 
-      if (isPaused) return;
+      if (isPaused || hoverRafId !== null) return;
 
-      if (hoverRafId !== null) cancelAnimationFrame(hoverRafId);
       hoverRafId = requestAnimationFrame(() => {
+        hoverRafId = null;
         const target = document.elementFromPoint(lastClientX, lastClientY);
         if (target) highlightElement(target);
-        hoverRafId = null;
       });
     };
 
     const handlePickingClick = (event: MouseEvent): void => {
       const target = event.composedPath()[0] as Element;
-
-      // Prevent selecting elements inside sat-root shadow DOM
-      const shadowHost = document.getElementById('sat-root');
-      const isInsideShadowDOM =
-        shadowHost &&
-        (shadowHost === target || shadowHost.contains(target) || (target.getRootNode && target.getRootNode() === shadowHost.shadowRoot));
-
-      if (isPaused || isInsideShadowDOM || panelContainerRef.current?.contains(target) || rulesPanelRef.current?.contains(target)) {
+      if (isPaused || isOwnElement(target)) {
         return;
       }
 
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
-      const selector: string = generateSelector(target);
-      onElementPickedRef.current(selector);
-      useStore.setIsPicking(false);
+      onElementPickedRef.current(generateSelector(target));
+      isPicking.value = false;
     };
 
     const handleKeyEvent = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') {
         event.preventDefault();
         event.stopPropagation();
-        useStore.setIsPicking(false);
+        isPicking.value = false;
         return;
       }
 
-      if (event.key === 'Control') {
-        if (event.type === 'keydown' && !isPaused) {
-          isPaused = true;
-          document.body.style.cursor = 'default';
-          if (lastHoveredElement.value) {
-            lastHoveredElement.value.classList.remove('highlight-pick');
-            useStore.setLastHoveredElement(null);
-          }
-        } else if (event.type === 'keyup' && isPaused) {
-          isPaused = false;
-          document.body.style.cursor = 'crosshair';
-          const target = document.elementFromPoint(lastClientX, lastClientY);
-          highlightElement(target);
-        }
+      if (event.key !== 'Control') {
+        return;
+      }
+
+      if (event.type === 'keydown' && !isPaused) {
+        isPaused = true;
+        document.body.style.cursor = 'default';
+        clearHighlight();
+      } else if (event.type === 'keyup' && isPaused) {
+        isPaused = false;
+        document.body.style.cursor = 'crosshair';
+        const target = document.elementFromPoint(lastClientX, lastClientY);
+        if (target) highlightElement(target);
       }
     };
 
@@ -139,10 +124,7 @@ export const useElementPicker = ({ panelContainerRef, rulesPanelRef }: UseElemen
       panelContainerRef.current?.classList.remove('picking-mode-panel');
       rulesPanelRef.current?.classList.remove('picking-mode-panel');
       document.body.style.cursor = 'default';
-      if (lastHoveredElement.value) {
-        lastHoveredElement.value.classList.remove('highlight-pick');
-        useStore.setLastHoveredElement(null);
-      }
+      clearHighlight();
 
       document.removeEventListener('mouseover', handlePickingHover, { capture: true });
       document.removeEventListener('click', handlePickingClick, { capture: true });

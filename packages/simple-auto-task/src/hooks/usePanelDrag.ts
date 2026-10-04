@@ -1,116 +1,124 @@
-import { noop } from 'es-toolkit';
-import { useCallback, useEffect, useRef } from 'preact/hooks';
+import { clamp } from 'es-toolkit';
+import { useEffect } from 'preact/hooks';
 
 import type { RefObject } from 'preact';
+import type { Position } from '../app/types';
+
+const PANEL_HEADER_HEIGHT = 30;
 
 interface UsePanelDragProps {
   readonly mainPanelRef: RefObject<HTMLDivElement | null>;
-  readonly onDragEnd: () => void;
+  readonly onDragEnd: (position: Position) => void;
   readonly rulesPanelRef: RefObject<HTMLDivElement | null>;
 }
 
 export const usePanelDrag = ({ mainPanelRef, rulesPanelRef, onDragEnd }: UsePanelDragProps): void => {
-  const initialOffsetX = useRef<number>(0);
-  const initialOffsetY = useRef<number>(0);
+  useEffect(() => {
+    const mainPanel = mainPanelRef.current;
+    const rulesPanel = rulesPanelRef.current;
+    const mainPanelHeader = mainPanel?.querySelector<HTMLElement>('#panel-header') ?? null;
+    const rulesPanelHeader = rulesPanel?.querySelector<HTMLElement>('#rules-panel-header') ?? null;
 
-  const calculateInitialOffsets = useCallback(() => {
-    if (mainPanelRef.current && rulesPanelRef.current && rulesPanelRef.current.style.display !== 'none') {
-      const userPanelRect = mainPanelRef.current.getBoundingClientRect();
-      const rulesPanelRect = rulesPanelRef.current.getBoundingClientRect();
-      initialOffsetX.current = rulesPanelRect.left - userPanelRect.left;
-      initialOffsetY.current = rulesPanelRect.top - userPanelRect.top;
+    if (!mainPanel || !rulesPanel || !mainPanelHeader || !rulesPanelHeader) {
+      return;
     }
-  }, [mainPanelRef, rulesPanelRef]);
 
-  const handlePanelsDrag = useCallback(
-    (draggedElement: HTMLElement, deltaX: number, deltaY: number) => {
-      const headerHeight = 30;
-      let newTop = draggedElement.offsetTop - deltaY;
-      let newLeft = draggedElement.offsetLeft - deltaX;
+    let offsetX = 0;
+    let offsetY = 0;
+    let mainPosition: Position = { top: mainPanel.offsetTop, left: mainPanel.offsetLeft, right: null };
 
-      newTop = Math.max(0, Math.min(newTop, window.innerHeight - headerHeight));
-      newLeft = Math.max(-draggedElement.offsetWidth + headerHeight * 2, Math.min(newLeft, window.innerWidth - headerHeight * 2));
+    const isRulesPanelVisible = (): boolean => rulesPanel.style.display !== 'none';
 
-      draggedElement.style.top = `${newTop}px`;
-      draggedElement.style.left = `${newLeft}px`;
-      draggedElement.style.right = 'auto';
+    const captureOffsets = (): void => {
+      if (!isRulesPanelVisible()) return;
 
-      if (draggedElement === mainPanelRef.current && rulesPanelRef.current && rulesPanelRef.current.style.display !== 'none') {
-        rulesPanelRef.current.style.top = `${newTop + initialOffsetY.current}px`;
-        rulesPanelRef.current.style.left = `${newLeft + initialOffsetX.current}px`;
-        rulesPanelRef.current.style.right = 'auto';
-      } else if (draggedElement === rulesPanelRef.current && mainPanelRef.current) {
-        mainPanelRef.current.style.top = `${newTop - initialOffsetY.current}px`;
-        mainPanelRef.current.style.left = `${newLeft - initialOffsetX.current}px`;
-        mainPanelRef.current.style.right = 'auto';
+      const mainRect = mainPanel.getBoundingClientRect();
+      const rulesRect = rulesPanel.getBoundingClientRect();
+      offsetX = rulesRect.left - mainRect.left;
+      offsetY = rulesRect.top - mainRect.top;
+    };
+
+    const movePanel = (panel: HTMLElement, top: number, left: number): void => {
+      panel.style.top = `${top}px`;
+      panel.style.left = `${left}px`;
+      panel.style.right = 'auto';
+    };
+
+    const dragPanel = (draggedPanel: HTMLElement, deltaX: number, deltaY: number): void => {
+      const top = clamp(draggedPanel.offsetTop - deltaY, 0, window.innerHeight - PANEL_HEADER_HEIGHT);
+      const left = clamp(
+        draggedPanel.offsetLeft - deltaX,
+        -draggedPanel.offsetWidth + PANEL_HEADER_HEIGHT * 2,
+        window.innerWidth - PANEL_HEADER_HEIGHT * 2,
+      );
+      movePanel(draggedPanel, top, left);
+
+      if (draggedPanel === mainPanel) {
+        mainPosition = { top, left, right: null };
+        if (isRulesPanelVisible()) {
+          movePanel(rulesPanel, top + offsetY, left + offsetX);
+        }
+        return;
       }
-    },
-    [mainPanelRef, rulesPanelRef],
-  );
 
-  const makeDraggable = useCallback(
-    (element: HTMLElement, handle: HTMLElement, onDragCallback: (draggedElement: HTMLElement, deltaX: number, deltaY: number) => void) => {
-      let mouseStartX = 0;
-      let mouseStartY = 0;
+      const mainTop = top - offsetY;
+      const mainLeft = left - offsetX;
+      mainPosition = { top: mainTop, left: mainLeft, right: null };
+      movePanel(mainPanel, mainTop, mainLeft);
+    };
+
+    const makeDraggable = (panel: HTMLElement, header: HTMLElement, onDrag: typeof dragPanel): (() => void) => {
+      let dragStartX = 0;
+      let dragStartY = 0;
+
+      const handleDragMove = (event: MouseEvent): void => {
+        event.preventDefault();
+        const deltaX = dragStartX - event.clientX;
+        const deltaY = dragStartY - event.clientY;
+        dragStartX = event.clientX;
+        dragStartY = event.clientY;
+        onDrag(panel, deltaX, deltaY);
+      };
+
+      const handleDragEnd = (): void => {
+        stopDragging();
+        onDragEnd(mainPosition);
+      };
+
+      const stopDragging = (): void => {
+        document.removeEventListener('mousemove', handleDragMove);
+        document.removeEventListener('mouseup', handleDragEnd);
+      };
 
       const handleDragStart = (event: MouseEvent): void => {
-        if (event.target !== handle && !handle.contains(event.target as Node)) {
+        if (!header.contains(event.target as Node)) {
           return;
         }
 
         event.preventDefault();
-        mouseStartX = event.clientX;
-        mouseStartY = event.clientY;
+        dragStartX = event.clientX;
+        dragStartY = event.clientY;
+        captureOffsets();
+        mainPosition = { top: mainPanel.offsetTop, left: mainPanel.offsetLeft, right: null };
 
-        calculateInitialOffsets();
-
+        document.addEventListener('mousemove', handleDragMove);
         document.addEventListener('mouseup', handleDragEnd);
-        document.addEventListener('mousemove', handleElementDrag);
       };
 
-      const handleElementDrag = (event: MouseEvent): void => {
-        event.preventDefault();
-        const deltaX: number = mouseStartX - event.clientX;
-        const deltaY: number = mouseStartY - event.clientY;
-        mouseStartX = event.clientX;
-        mouseStartY = event.clientY;
-
-        onDragCallback(element, deltaX, deltaY);
-      };
-
-      const handleDragEnd = (): void => {
-        document.removeEventListener('mouseup', handleDragEnd);
-        document.removeEventListener('mousemove', handleElementDrag);
-        onDragEnd();
-      };
-
-      handle.addEventListener('mousedown', handleDragStart);
+      header.addEventListener('mousedown', handleDragStart);
 
       return () => {
-        handle.removeEventListener('mousedown', handleDragStart);
-        document.removeEventListener('mouseup', handleDragEnd);
-        document.removeEventListener('mousemove', handleElementDrag);
+        header.removeEventListener('mousedown', handleDragStart);
+        stopDragging();
       };
-    },
-    [calculateInitialOffsets, onDragEnd],
-  );
-
-  useEffect(() => {
-    const mainPanelHeader = mainPanelRef.current?.querySelector('#panel-header') as HTMLElement | null;
-    const rulesPanelHeader = rulesPanelRef.current?.querySelector('#rules-panel-header') as HTMLElement | null;
-
-    let cleanupMainPanel = noop;
-    let cleanupRulesPanel = noop;
-
-    if (mainPanelRef.current && mainPanelHeader) {
-      cleanupMainPanel = makeDraggable(mainPanelRef.current, mainPanelHeader, handlePanelsDrag);
-    }
-    if (rulesPanelRef.current && rulesPanelHeader) {
-      cleanupRulesPanel = makeDraggable(rulesPanelRef.current, rulesPanelHeader, handlePanelsDrag);
-    }
-    return () => {
-      cleanupMainPanel();
-      cleanupRulesPanel();
     };
-  }, [mainPanelRef, rulesPanelRef, makeDraggable, handlePanelsDrag]);
+
+    const stopMainPanelDrag = makeDraggable(mainPanel, mainPanelHeader, dragPanel);
+    const stopRulesPanelDrag = makeDraggable(rulesPanel, rulesPanelHeader, dragPanel);
+
+    return () => {
+      stopMainPanelDrag();
+      stopRulesPanelDrag();
+    };
+  }, [mainPanelRef, rulesPanelRef, onDragEnd]);
 };

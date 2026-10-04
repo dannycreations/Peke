@@ -3,10 +3,8 @@ import { render } from 'preact';
 import { runOnInteractive, runOnObserver } from '@peke/lib/helpers/autorun';
 import { protectKeys } from '@peke/lib/hooks/useStorage';
 import { App } from './app/App';
-import { STORAGE_AUTORUN_KEY, STORAGE_CONFIG_KEY } from './app/constants';
+import { ROOT_ELEMENT_ID, STORAGE_AUTORUN_KEY, STORAGE_CONFIG_KEY } from './app/constants';
 import { APP_STYLES, GLOBAL_STYLES } from './app/styles';
-
-const ROOT_ELEMENT_ID = 'sat-root';
 
 function injectGlobalStyles(): void {
   const styleId = 'sat-global-styles';

@@ -1,3 +1,7 @@
+export function stopKeyboardPropagation(event: KeyboardEvent): void {
+  event.stopPropagation();
+}
+
 export function generateSelector(el: Element): string {
   const path: string[] = [];
   let current: Element | null = el;

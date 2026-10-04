@@ -1,4 +1,8 @@
-export type ActionType = 'CLICK' | 'DELETE' | 'STOP';
+import type { ActionType } from './constants';
+
+export type DeleteActionType = 'self' | 'parent' | 'custom';
+
+export type DelayKey = 'cycleDelay' | 'stepDelay' | 'waitDelay';
 
 export interface Config {
   readonly visible: boolean;
@@ -8,12 +12,6 @@ export interface Config {
   readonly stepDelay: number;
   readonly waitDelay: number;
 }
-
-export type DeleteActionType = 'self' | 'parent' | 'custom';
-
-export type HighlightState = 'waiting' | 'success' | 'idle';
-
-export type StatusState = 'idle' | 'running' | 'stopped' | 'waiting';
 
 export interface Position {
   readonly left: number | null;

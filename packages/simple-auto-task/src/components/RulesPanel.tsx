@@ -1,10 +1,11 @@
 import { memo } from 'preact/compat';
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 
-import { ActionType as ActionTypeConst } from '../app/constants';
+import { ActionType } from '../app/constants';
+import { stopKeyboardPropagation } from '../utilities/dom';
 
 import type { RefObject } from 'preact';
-import type { ActionType, DeleteActionType, Rule } from '../app/types';
+import type { DeleteActionType, Rule, RuleOptions } from '../app/types';
 
 interface RulesPanelProps {
   readonly editingRule: Rule | null;
@@ -16,14 +17,10 @@ interface RulesPanelProps {
   readonly startPicking: (onElementPicked: (selector: string) => void) => void;
 }
 
-const handleKeyDown = (event: KeyboardEvent): void => {
-  event.stopPropagation();
-};
-
 export const RulesPanel = memo<RulesPanelProps>(
   ({ editingRule, editingRuleIndex, onCloseRules, onSaveRule, onTestSelector, rulesPanelRef, startPicking }) => {
     const [form, setForm] = useState<Omit<Rule, 'id'>>({
-      action: ActionTypeConst.CLICK,
+      action: ActionType.CLICK,
       selector: '',
       options: {
         ignoreWait: false,
@@ -45,13 +42,13 @@ export const RulesPanel = memo<RulesPanelProps>(
     }, [editingRule]);
 
     const updateForm = useCallback((updates: Partial<Omit<Rule, 'id'>>) => {
-      setForm((prev) => ({ ...prev, ...updates }));
+      setForm((previous) => ({ ...previous, ...updates }));
     }, []);
 
     const updateOptions = useCallback((updates: Partial<Rule['options']>) => {
-      setForm((prev) => ({
-        ...prev,
-        options: { ...prev.options, ...updates },
+      setForm((previous) => ({
+        ...previous,
+        options: { ...previous.options, ...updates },
       }));
     }, []);
 
@@ -71,35 +68,25 @@ export const RulesPanel = memo<RulesPanelProps>(
     const handleSave = useCallback(() => {
       if (!editingRule) return;
 
-      const updatedOptions: any = {
-        ignoreWait: form.options.ignoreWait,
-      };
-
-      if (form.action === ActionTypeConst.DELETE) {
-        updatedOptions.deleteActionType = form.options.deleteActionType || 'self';
-        if (updatedOptions.deleteActionType === 'parent') {
-          updatedOptions.parentSelector = form.options.parentSelector;
-        } else if (updatedOptions.deleteActionType === 'custom') {
-          updatedOptions.customSelector = form.options.customSelector;
-        }
-      }
+      const options: RuleOptions =
+        form.action === ActionType.DELETE
+          ? {
+              ignoreWait: form.options.ignoreWait,
+              deleteActionType: form.options.deleteActionType ?? 'self',
+              parentSelector: form.options.deleteActionType === 'parent' ? form.options.parentSelector : undefined,
+              customSelector: form.options.deleteActionType === 'custom' ? form.options.customSelector : undefined,
+            }
+          : { ignoreWait: form.options.ignoreWait };
 
       onSaveRule({
         id: editingRule.id,
         action: form.action,
         selector: form.selector,
-        options: updatedOptions,
+        options,
       });
     }, [editingRule, form, onSaveRule]);
 
-    const handleTest = useCallback(
-      (selector: string, ref: RefObject<HTMLInputElement | null>) => {
-        onTestSelector(selector, ref.current);
-      },
-      [onTestSelector],
-    );
-
-    const isDeleteAction = form.action === ActionTypeConst.DELETE;
+    const isDeleteAction = form.action === ActionType.DELETE;
 
     return (
       <div id="rules-panel" ref={rulesPanelRef} style={{ display: editingRule ? 'block' : 'none' }}>
@@ -118,7 +105,7 @@ export const RulesPanel = memo<RulesPanelProps>(
               type="text"
               value={form.selector}
               onInput={(e) => updateForm({ selector: e.currentTarget.value })}
-              onKeyDown={handleKeyDown}
+              onKeyDown={stopKeyboardPropagation}
             />
             <div className="btn-group">
               <button id="rules-pick-btn" className="panel-button" title="Pick an element from the page" onClick={() => handlePick('selector')}>
@@ -128,7 +115,7 @@ export const RulesPanel = memo<RulesPanelProps>(
                 id="rules-test-btn"
                 className="panel-button"
                 title="Test the current selector"
-                onClick={() => handleTest(form.selector, selectorInputRef)}
+                onClick={() => onTestSelector(form.selector, selectorInputRef.current)}
               >
                 Test
               </button>
@@ -142,11 +129,11 @@ export const RulesPanel = memo<RulesPanelProps>(
               className="panel-select"
               value={form.action}
               onChange={(e) => updateForm({ action: e.currentTarget.value as ActionType })}
-              onKeyDown={handleKeyDown}
+              onKeyDown={stopKeyboardPropagation}
             >
-              <option value={ActionTypeConst.CLICK}>Click Element</option>
-              <option value={ActionTypeConst.DELETE}>Delete Element(s)</option>
-              <option value={ActionTypeConst.STOP}>Stop Task</option>
+              <option value={ActionType.CLICK}>Click Element</option>
+              <option value={ActionType.DELETE}>Delete Element(s)</option>
+              <option value={ActionType.STOP}>Stop Task</option>
             </select>
           </label>
 
@@ -159,7 +146,7 @@ export const RulesPanel = memo<RulesPanelProps>(
                   className="panel-select"
                   value={form.options.deleteActionType || 'self'}
                   onChange={(e) => updateOptions({ deleteActionType: e.currentTarget.value as DeleteActionType })}
-                  onKeyDown={handleKeyDown}
+                  onKeyDown={stopKeyboardPropagation}
                 >
                   <option value="self">Delete Self</option>
                   <option value="parent">Delete Parent</option>
@@ -178,7 +165,7 @@ export const RulesPanel = memo<RulesPanelProps>(
                     value={form.options.parentSelector || ''}
                     placeholder="e.g., .card, #container"
                     onInput={(e) => updateOptions({ parentSelector: e.currentTarget.value })}
-                    onKeyDown={handleKeyDown}
+                    onKeyDown={stopKeyboardPropagation}
                   />
                   <div className="btn-group">
                     <button
@@ -193,7 +180,7 @@ export const RulesPanel = memo<RulesPanelProps>(
                       id="rules-parent-test-btn"
                       className="panel-button"
                       title="Test Parent Selector"
-                      onClick={() => handleTest(form.options.parentSelector || '', parentSelectorInputRef)}
+                      onClick={() => onTestSelector(form.options.parentSelector || '', parentSelectorInputRef.current)}
                     >
                       Test
                     </button>
@@ -212,7 +199,7 @@ export const RulesPanel = memo<RulesPanelProps>(
                     value={form.options.customSelector || ''}
                     placeholder="e.g., .ad-banner"
                     onInput={(e) => updateOptions({ customSelector: e.currentTarget.value })}
-                    onKeyDown={handleKeyDown}
+                    onKeyDown={stopKeyboardPropagation}
                   />
                   <div className="btn-group">
                     <button
@@ -227,7 +214,7 @@ export const RulesPanel = memo<RulesPanelProps>(
                       id="rules-custom-test-btn"
                       className="panel-button"
                       title="Test Custom Selector"
-                      onClick={() => handleTest(form.options.customSelector || '', customSelectorInputRef)}
+                      onClick={() => onTestSelector(form.options.customSelector || '', customSelectorInputRef.current)}
                     >
                       Test
                     </button>

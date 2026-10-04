@@ -13,7 +13,7 @@ import { CONFIG } from './constants';
 import type { ComponentChildren, ErrorInfo } from 'preact';
 
 class ErrorBoundary extends Component<{ children: ComponentChildren }, { hasError: boolean }> {
-  public static getDerivedStateFromError() {
+  public static override getDerivedStateFromError() {
     return { hasError: true };
   }
 
@@ -22,7 +22,7 @@ class ErrorBoundary extends Component<{ children: ComponentChildren }, { hasErro
     this.state = { hasError: false };
   }
 
-  public componentDidCatch(error: unknown, errorInfo: ErrorInfo) {
+  public override componentDidCatch(error: unknown, errorInfo: ErrorInfo) {
     console.error('OpenAI ChatGPT Tweak Error:', error, errorInfo);
   }
 
@@ -50,7 +50,7 @@ const AppContent = () => {
     }
   }, []);
 
-  useEffect(() => {
+  useEffect((): void | (() => void) => {
     if (isMenuOpen || isTooltipVisible) {
       updateCoords();
 

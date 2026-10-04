@@ -4,9 +4,9 @@ import { useCallback, useEffect, useRef } from 'preact/hooks';
 import type { RefObject } from 'preact';
 
 interface UsePanelDragProps {
-  readonly mainPanelRef: RefObject<HTMLDivElement>;
+  readonly mainPanelRef: RefObject<HTMLDivElement | null>;
   readonly onDragEnd: () => void;
-  readonly rulesPanelRef: RefObject<HTMLDivElement>;
+  readonly rulesPanelRef: RefObject<HTMLDivElement | null>;
 }
 
 export const usePanelDrag = ({ mainPanelRef, rulesPanelRef, onDragEnd }: UsePanelDragProps): void => {

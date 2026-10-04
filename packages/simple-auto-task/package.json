@@ -8,8 +8,7 @@
   "scripts": {
     "build": "vite build",
     "check": "tsc --noEmit",
-    "test": "vitest",
-    "update": "npm-check-updates -u"
+    "test": "vitest"
   },
   "repository": {
     "type": "git",
@@ -18,9 +17,9 @@
   },
   "homepage": "https://github.com/dannycreations/Peke",
   "dependencies": {
-    "@preact/signals": "^2.11.2",
+    "@preact/signals": "^2.11.3",
     "jquery": "^4.0.0",
-    "preact": "^10.29.8"
+    "preact": "^11.0.0"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.6",

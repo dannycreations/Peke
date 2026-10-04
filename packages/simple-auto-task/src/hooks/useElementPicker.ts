@@ -6,8 +6,8 @@ import { generateSelector } from '../utilities/dom';
 import type { RefObject } from 'preact';
 
 interface UseElementPickerProps {
-  readonly panelContainerRef: RefObject<HTMLDivElement>;
-  readonly rulesPanelRef: RefObject<HTMLDivElement>;
+  readonly panelContainerRef: RefObject<HTMLDivElement | null>;
+  readonly rulesPanelRef: RefObject<HTMLDivElement | null>;
 }
 
 interface UseElementPickerReturn {

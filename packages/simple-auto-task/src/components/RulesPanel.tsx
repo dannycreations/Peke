@@ -12,7 +12,7 @@ interface RulesPanelProps {
   readonly onCloseRules: () => void;
   readonly onSaveRule: (rule: Rule) => void;
   readonly onTestSelector: (selector: string, inputEl: HTMLInputElement | null) => void;
-  readonly rulesPanelRef: RefObject<HTMLDivElement>;
+  readonly rulesPanelRef: RefObject<HTMLDivElement | null>;
   readonly startPicking: (onElementPicked: (selector: string) => void) => void;
 }
 
@@ -93,7 +93,7 @@ export const RulesPanel = memo<RulesPanelProps>(
     }, [editingRule, form, onSaveRule]);
 
     const handleTest = useCallback(
-      (selector: string, ref: RefObject<HTMLInputElement>) => {
+      (selector: string, ref: RefObject<HTMLInputElement | null>) => {
         onTestSelector(selector, ref.current);
       },
       [onTestSelector],

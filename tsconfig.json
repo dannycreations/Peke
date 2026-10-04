@@ -1,33 +1,7 @@
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "ES2020",
-    "moduleResolution": "bundler",
-    "moduleDetection": "force",
-    "isolatedModules": true,
-
-    "lib": ["esnext", "DOM", "DOM.Iterable"],
-    "types": ["vite/client"],
-
-    "outDir": "dist",
-    "rootDir": ".",
-    "declaration": true,
-    "noEmit": false,
-
-    "experimentalDecorators": true,
-    "useDefineForClassFields": false,
-
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true,
-
-    "allowJs": false,
-    "skipLibCheck": true,
-
-    "paths": {
-      "@peke/lib/*": ["./lib/*"]
-    }
-  }
+    "types": ["bun", "vite/client"]
+  },
+  "include": ["packages", "scripts"]
 }

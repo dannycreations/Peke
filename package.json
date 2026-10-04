@@ -9,9 +9,9 @@
     "dev": "bun scripts/dev.build.ts",
     "build": "turbo run build",
     "check": "bun run format && turbo run check",
-    "test": "turbo run test",
+    "test": "bun run check && turbo run test",
     "format": "prettier --write .",
-    "update": "turbo run update && npm-check-updates -u -x @types/node",
+    "update": "npm-check-updates -u -w -x @types/node",
     "prepack": "bun scripts/compile.build.ts",
     "prepare": "husky"
   },
@@ -27,19 +27,19 @@
     "es-toolkit": "^1.52.0"
   },
   "devDependencies": {
-    "@changesets/cli": "^3.0.2",
+    "@changesets/cli": "^3.0.3",
     "@ianvs/prettier-plugin-sort-imports": "^4.7.1",
     "@types/node": "24.13.3",
     "chokidar": "^5.0.0",
     "husky": "^9.1.7",
     "npm-check-updates": "^23.1.0",
-    "prettier": "^3.9.6",
+    "prettier": "^3.9.9",
     "terser": "^5.51.2",
-    "turbo": "^2.10.12",
+    "turbo": "^2.11.7",
     "typescript": "^7.0.2",
-    "vite": "^8.2.2",
+    "vite": "^8.3.2",
     "vite-plugin-checker": "^0.14.5",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.3"
   },
-  "packageManager": "bun@1.4.1"
+  "packageManager": "bun@1.4.2"
 }

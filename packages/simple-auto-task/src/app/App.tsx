@@ -22,7 +22,7 @@ import {
 } from '../stores/useStore';
 import { ActionType, DEFAULT_CONFIG, PANEL_SPACING, StatusState, STORAGE_AUTORUN_KEY } from './constants';
 
-import type { CSSProperties, JSX } from 'preact';
+import type { CSSProperties, TargetedEvent } from 'preact';
 import type { Rule } from './types';
 
 const PickerClue = memo(() => {
@@ -137,7 +137,7 @@ export const App = memo(() => {
   }, []);
 
   const handleConfigChange = useCallback(
-    (event: JSX.TargetedEvent<HTMLInputElement>) => {
+    (event: TargetedEvent<HTMLInputElement>) => {
       const { name, value } = event.currentTarget;
       const numericValue = parseInt(value, 10);
       if (!isNaN(numericValue)) {
@@ -154,7 +154,7 @@ export const App = memo(() => {
         return;
       }
 
-      const ruleId = Number(target.dataset.ruleId);
+      const ruleId = Number(target.dataset['ruleId']);
       if (isNaN(ruleId)) {
         return;
       }
@@ -263,7 +263,7 @@ export const App = memo(() => {
     storage.setItem(STORAGE_AUTORUN_KEY, 'false');
   }, [stopRunner, releaseWakeLock, storage]);
 
-  useEffect(() => {
+  useEffect((): void | (() => void) => {
     if (isRunning.value) {
       return;
     }

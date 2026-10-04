@@ -3,13 +3,14 @@
 ## Commands
 
 ```cmd
-# Check for compilation errors (Fast)
+:: Apply formatting, then perform static analysis
 bun run check
+bun --filter google-ytm check
 
-# Run all unit and integration tests (Slow)
+:: Perform static analysis, then execute the test suite
 bun run test
 ```
 
 ## Guidelines
 
-- Bun is used as both the runtime and package manager.
+- Bun serves as both a runtime environment and a package manager.

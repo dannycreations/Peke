@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef } from 'preact/hooks';
 
 import { HIGHLIGHT_BG_COLORS, HIGHLIGHT_TEXT_COLORS, STATUS_COLORS, STATUS_TEXTS } from '../app/constants';
 
-import type { CSSProperties, JSX, RefObject } from 'preact';
+import type { CSSProperties, RefObject, TargetedEvent } from 'preact';
 import type { HighlightState, Rule, StatusState } from '../app/types';
 
 interface MainPanelProps {
@@ -13,18 +13,18 @@ interface MainPanelProps {
   readonly isAutoRun: boolean;
   readonly isRunning: boolean;
   readonly onAddSelector: () => void;
-  readonly onConfigChange: (event: JSX.TargetedEvent<HTMLInputElement>) => void;
+  readonly onConfigChange: (event: TargetedEvent<HTMLInputElement>) => void;
   readonly onListClick: (event: MouseEvent) => void;
   readonly onPick: () => void;
   readonly onStart: () => void;
   readonly onStop: () => void;
   readonly onTestSelector: () => void;
-  readonly selectorInputRef: RefObject<HTMLInputElement>;
+  readonly selectorInputRef: RefObject<HTMLInputElement | null>;
   readonly selectorList: ReadonlyArray<Rule>;
   readonly status: StatusState;
   readonly stepDelay: number;
   readonly waitDelay: number;
-  readonly mainPanelRef?: RefObject<HTMLDivElement>;
+  readonly mainPanelRef?: RefObject<HTMLDivElement | null>;
   readonly style?: CSSProperties;
 }
 

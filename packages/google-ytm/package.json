@@ -8,8 +8,7 @@
   "scripts": {
     "build": "vite build",
     "check": "tsc --noEmit",
-    "test": "vitest",
-    "update": "npm-check-updates -u"
+    "test": "vitest"
   },
   "repository": {
     "type": "git",

@@ -13,10 +13,6 @@
     "test": {
       "dependsOn": ["^test"],
       "cache": false
-    },
-    "update": {
-      "outputs": ["package.json"],
-      "cache": false
     }
   }
 }

@@ -13,7 +13,7 @@ const ROOT_PATH = '/';
 const CONVERSATION_RE = /\/c\/([^/?#]+)/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export function getConversationId(path: string): string {
+function getConversationId(path: string): string {
   const match = CONVERSATION_RE.exec(path);
   return match ? match[1] : '';
 }
@@ -33,17 +33,13 @@ export function readPromptStore(): PromptStore {
   return normalizeStore(getStoredItem<unknown>(CONFIG.PROMPT_STORAGE_KEY, {}));
 }
 
-export function writePromptStore(store: PromptStore): void {
+function writePromptStore(store: PromptStore): void {
   setStoredItem(CONFIG.PROMPT_STORAGE_KEY, store);
 }
 
 export function resolvePrompt(store: PromptStore, path: string): string {
   const entry = store[path] || store[ROOT_PATH];
   return entry ? entry.prompt : '';
-}
-
-export function resolveCurrentPrompt(): string {
-  return resolvePrompt(readPromptStore(), getCurrentPath());
 }
 
 let lastPath = getCurrentPath();

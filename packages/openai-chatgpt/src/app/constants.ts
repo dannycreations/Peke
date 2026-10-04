@@ -2,6 +2,7 @@ export const CONFIG = {
   DEFAULT_MODEL_ID: 'auto',
   AVAILABLE_MODELS: ['auto'],
   DEFAULT_SYSTEM_PROMPT: 'You are a helpful assistant.',
+  ROOT_ELEMENT_ID: 'ms-react-root',
   UI_CONTAINER_SEL: 'div#conversation-header-actions',
   MODEL_STORAGE_KEY: 'ms_model_store',
   MODEL_LIST_STORAGE_KEY: 'ms_model_list_store',

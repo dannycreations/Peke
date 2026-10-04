@@ -41,6 +41,8 @@ const AppContent = () => {
   const [isTooltipVisible, setIsTooltipVisible] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
 
   const updateCoords = useCallback(() => {
@@ -64,8 +66,6 @@ const AppContent = () => {
     }
   }, [isMenuOpen, isTooltipVisible, updateCoords]);
 
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const loadPrompt = useCallback(() => {
     try {
       systemPromptSignal.value = syncPrompt();
@@ -84,10 +84,7 @@ const AppContent = () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
-      saveTimeoutRef.current = setTimeout(() => {
-        setIsSaved(false);
-        saveTimeoutRef.current = null;
-      }, 1000);
+      saveTimeoutRef.current = setTimeout(() => setIsSaved(false), 1000);
     } catch (error) {
       console.error('Error saving prompt:', error);
     }
@@ -112,24 +109,22 @@ const AppContent = () => {
   }, [isMenuOpen, loadPrompt]);
 
   useEffect(() => {
-    runOnComplete(() => fetchModels());
+    runOnComplete(fetchModels);
   }, []);
 
   useEffect(() => {
-    setStoredItem(CONFIG.MODEL_STORAGE_KEY, modelIdSignal.value);
+    setStoredItem(CONFIG.MODEL_STORAGE_KEY, modelId);
   }, [modelId]);
 
   useEffect(() => {
     if (!isMenuOpen) return;
 
     const handleOutsideClick = (e: MouseEvent) => {
-      if (buttonRef.current && !buttonRef.current.contains(e.target as Node)) {
-        const menu = document.querySelector('[role="menu"]');
-        if (menu && !menu.contains(e.target as Node)) {
-          setIsMenuOpen(false);
-          buttonRef.current.focus();
-        }
-      }
+      const target = e.target as Node;
+      if (buttonRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+
+      setIsMenuOpen(false);
+      buttonRef.current?.focus();
     };
 
     document.addEventListener('mousedown', handleOutsideClick);
@@ -140,7 +135,7 @@ const AppContent = () => {
     <div className="relative">
       <button
         ref={buttonRef}
-        id={CONFIG.MODEL_STORAGE_KEY}
+        id="ms-model-button"
         type="button"
         aria-haspopup="true"
         aria-expanded={isMenuOpen}
@@ -192,6 +187,7 @@ const AppContent = () => {
       {isMenuOpen &&
         createPortal(
           <div
+            ref={menuRef}
             role="menu"
             className="fixed z-[1000]"
             style={{
@@ -211,12 +207,8 @@ const AppContent = () => {
                   className="w-full text-sm rounded-lg border border-token-border-medium bg-token-main-surface-secondary p-2 focus:outline-none focus:ring-1 focus:ring-token-main-surface-tertiary"
                   value={modelList.includes(modelId) ? modelId : 'custom'}
                   onChange={(e) => {
-                    const val = (e.target as HTMLSelectElement).value;
-                    if (val !== 'custom') {
-                      modelIdSignal.value = val;
-                    } else {
-                      modelIdSignal.value = '';
-                    }
+                    const val = e.currentTarget.value;
+                    modelIdSignal.value = val === 'custom' ? '' : val;
                   }}
                 >
                   {modelList.map((id) => {
@@ -238,7 +230,7 @@ const AppContent = () => {
                     className="w-full text-sm rounded-lg border border-token-border-medium bg-token-main-surface-secondary p-2 focus:outline-none focus:ring-1 focus:ring-token-main-surface-tertiary"
                     value={modelId}
                     onInput={(e) => {
-                      modelIdSignal.value = (e.target as HTMLInputElement).value;
+                      modelIdSignal.value = e.currentTarget.value;
                     }}
                   />
                 </div>
@@ -267,8 +259,8 @@ const AppContent = () => {
                   placeholder="Enter custom system prompt..."
                   className="w-full text-sm rounded-lg border border-token-border-medium bg-token-main-surface-secondary p-2 resize-none focus:outline-none focus:ring-1 focus:ring-token-main-surface-tertiary"
                   value={systemPrompt}
-                  onBlur={(e) => storePrompt((e.target as HTMLTextAreaElement).value)}
-                  onChange={(e) => (systemPromptSignal.value = (e.target as HTMLTextAreaElement).value)}
+                  onBlur={(e) => storePrompt(e.currentTarget.value)}
+                  onChange={(e) => (systemPromptSignal.value = e.currentTarget.value)}
                 />
               </div>
             </div>

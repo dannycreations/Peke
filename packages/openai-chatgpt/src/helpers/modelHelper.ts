@@ -13,6 +13,9 @@ export function formatModelId(id: string): string {
 }
 
 export async function fetchModels(): Promise<void> {
+  const fallback: string[] = [...CONFIG.AVAILABLE_MODELS];
+  let modelList = fallback;
+
   try {
     const response = await fetch('https://chatgpt.com/backend-api/models', {
       credentials: 'include',
@@ -23,20 +26,12 @@ export async function fetchModels(): Promise<void> {
     }
 
     const data: ChatGPTModelsResponse = await response.json();
-    const models: string[] = [];
-
-    if (data.models && Array.isArray(data.models)) {
-      for (const model of data.models) {
-        models.push(model.slug);
-      }
-    }
-
-    const mergedList = Array.from(new Set([...CONFIG.AVAILABLE_MODELS, ...models]));
-    modelListSignal.value = mergedList;
-    setStoredItem(CONFIG.MODEL_LIST_STORAGE_KEY, mergedList);
+    const slugs = Array.isArray(data.models) ? data.models.map((model) => model.slug) : [];
+    modelList = Array.from(new Set([...fallback, ...slugs]));
   } catch (error) {
     console.error('Error fetching ChatGPT models:', error);
-    modelListSignal.value = [...CONFIG.AVAILABLE_MODELS];
-    setStoredItem(CONFIG.MODEL_LIST_STORAGE_KEY, [...CONFIG.AVAILABLE_MODELS]);
   }
+
+  modelListSignal.value = modelList;
+  setStoredItem(CONFIG.MODEL_LIST_STORAGE_KEY, modelList);
 }

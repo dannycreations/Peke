@@ -13,24 +13,11 @@ function patch(): void {
   window.originalFetch = originalFetch;
 
   window.fetch = async (input, init = {}) => {
-    let url = '';
-    if (typeof input === 'string') {
-      url = input;
-    } else if (input instanceof URL) {
-      url = input.href;
-    } else if (input && typeof input === 'object' && 'url' in input) {
-      url = (input as Request).url;
-    }
+    const isRequest = typeof input === 'object' && input !== null && 'url' in input;
+    const url = typeof input === 'string' ? input : isRequest ? input.url : input.href;
+    const method = (init.method ?? (isRequest ? input.method : 'GET')).toUpperCase();
 
-    let rawMethod = 'GET';
-    if (init && typeof init.method === 'string') {
-      rawMethod = init.method;
-    } else if (input && typeof input === 'object' && 'method' in input && typeof (input as Request).method === 'string') {
-      rawMethod = (input as Request).method;
-    }
-
-    const method = rawMethod.toUpperCase();
-    if (method === 'POST' && url && url.endsWith('conversation')) {
+    if (method === 'POST' && url.endsWith('conversation')) {
       try {
         const body = typeof init.body === 'string' ? JSON.parse(init.body) : init.body;
 
@@ -62,12 +49,13 @@ function patch(): void {
 }
 
 function main(): void {
+  if (document.getElementById(CONFIG.ROOT_ELEMENT_ID)) return;
+
   const container = document.querySelector(CONFIG.UI_CONTAINER_SEL);
   if (!container) return;
-  if (container.querySelector('#ms-react-root')) return;
 
   const rootElement = document.createElement('div');
-  rootElement.id = 'ms-react-root';
+  rootElement.id = CONFIG.ROOT_ELEMENT_ID;
   container.prepend(rootElement);
 
   render(<AppView />, rootElement);

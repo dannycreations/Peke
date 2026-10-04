@@ -4,7 +4,7 @@ import { posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { snakeCase } from 'es-toolkit';
 
-import { homepage } from '../package.json';
+import { homepage } from '../package.json' with { type: 'json' };
 
 interface FilePath {
   readonly full: string;

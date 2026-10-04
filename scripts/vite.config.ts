@@ -3,7 +3,7 @@ import { defineConfig, loadEnv, mergeConfig } from 'vite';
 import checker from 'vite-plugin-checker';
 import { configDefaults } from 'vitest/config';
 
-import { name } from '../package.json';
+import { name } from '../package.json' with { type: 'json' };
 
 import type { UserConfig, UserConfigFnObject } from 'vite';
 
@@ -13,7 +13,7 @@ export function createViteConfig(options: UserConfig = {}): UserConfigFnObject {
     return mergeConfig(
       {
         plugins: [
-          !env.VITEST &&
+          !env['VITEST'] &&
             checker({
               typescript: true,
               enableBuild: true,
@@ -54,7 +54,7 @@ export function createViteConfig(options: UserConfig = {}): UserConfigFnObject {
           passWithNoTests: true,
         },
         define: {
-          'process.env.NODE_ENV': JSON.stringify(env.NODE_ENV),
+          'process.env.NODE_ENV': JSON.stringify(env['NODE_ENV']),
         },
         resolve: {
           tsconfigPaths: true,

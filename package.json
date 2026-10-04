@@ -11,7 +11,7 @@
     "check": "bun run format && turbo run check",
     "test": "bun run check && turbo run test",
     "format": "prettier --write .",
-    "update": "npm-check-updates -u -w -x @types/node",
+    "update": "npm-check-updates -u -w",
     "prepack": "bun scripts/compile.build.ts",
     "prepare": "husky"
   },
@@ -29,7 +29,7 @@
   "devDependencies": {
     "@changesets/cli": "^3.0.3",
     "@ianvs/prettier-plugin-sort-imports": "^4.7.1",
-    "@types/node": "24.13.3",
+    "@types/bun": "^1.4.2",
     "chokidar": "^5.0.0",
     "husky": "^9.1.7",
     "npm-check-updates": "^23.1.0",
